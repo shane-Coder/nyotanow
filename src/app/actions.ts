@@ -42,9 +42,12 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
     };
   }
 
+  // Only a fixed label, never arbitrary text from the form.
+  const source = formData.get("source") === "invite" ? "invite" : "";
+
   let created: { slug: string; key: string };
   try {
-    created = await insertInvite(parsed.data);
+    created = await insertInvite(parsed.data, source);
   } catch (err) {
     console.error("createInvite failed", err);
     return { error: "Sorry, we couldn't save your invite. Please try again in a moment." };

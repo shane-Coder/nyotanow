@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { InviteCard } from "@/components/InviteCard";
 import { MyInvites } from "@/components/MyInvites";
+import { RememberReferrer } from "@/components/RememberReferrer";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import type { InviteData } from "@/lib/invite";
 import { OCCASIONS } from "@/lib/occasions";
@@ -67,6 +68,7 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
+      <RememberReferrer />
       <main>
         <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-2 lg:pt-16">
           <div className="text-center lg:text-left">

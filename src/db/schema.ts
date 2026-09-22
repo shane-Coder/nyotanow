@@ -17,6 +17,7 @@ export const invites = pgTable("invites", {
   venue: text("venue").notNull(),
   address: text("address").notNull(),
   message: text("message").notNull(),
+  source: text("source").notNull().default(""),
   isPremium: boolean("is_premium").notNull().default(false),
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState, type ReactNode } from "react";
+import { useStoredValue } from "@/lib/client-store";
+import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
 import { todayInIST, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
@@ -17,6 +19,8 @@ export function CreateForm({ initial, action, mode }: Props) {
   const [data, setData] = useState<InviteData>(initial);
   const [state, formAction, pending] = useActionState(action, undefined);
   const occasion = getOccasion(data.occasion) ?? OCCASIONS[0];
+  // Set when this host arrived from another invite's footer.
+  const referrer = useStoredValue(REFERRER_KEY) === "invite" ? "invite" : "";
   const errors = state?.fieldErrors ?? {};
   // Warn before submitting rather than only after the server rejects it.
   const datePassed = data.date !== "" && data.date < todayInIST();
@@ -69,6 +73,7 @@ export function CreateForm({ initial, action, mode }: Props) {
       {(["occasion", "template", "palette", "lang"] as const).map((k) => (
         <input key={k} type="hidden" name={k} value={data[k]} />
       ))}
+      {mode === "create" && <input type="hidden" name="source" value={referrer} />}
 
       {/* Preview: first on mobile so people see the result straight away. */}
       <div className="lg:order-2">

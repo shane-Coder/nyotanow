@@ -40,4 +40,12 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX rsvps_invite_id_idx ON rsvps (invite_id);
     `,
   },
+  {
+    name: "0002_invite_source",
+    sql: `
+      -- Where the host came from: '' (direct) or 'invite' (clicked the footer
+      -- of someone else's invite). This is what measures the growth loop.
+      ALTER TABLE invites ADD COLUMN source text NOT NULL DEFAULT '';
+    `,
+  },
 ];
