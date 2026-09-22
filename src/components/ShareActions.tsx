@@ -13,7 +13,8 @@ async function renderCardPng(cardId: string): Promise<Blob> {
   // Render a copy at full export width instead of upscaling the on-screen
   // card. The card is sized in container units, so it lays out identically,
   // text is rasterised at native size, and html-to-image's font-size rounding
-  // (floor(px) - 0.1) becomes negligible instead of re-wrapping long titles.
+  // (floor(px) - 0.1) matters much less than on the small card. Line breaks
+  // stay stable because the card's text lines are full-width (see InviteCard).
   const holder = document.createElement("div");
   holder.setAttribute("aria-hidden", "true");
   holder.style.cssText = `position:fixed;left:-${EXPORT_WIDTH * 2}px;top:0;width:${EXPORT_WIDTH}px;pointer-events:none`;

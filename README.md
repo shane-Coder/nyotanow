@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Postgres](https://img.shields.io/badge/Postgres-Drizzle_ORM-4169E1?logo=postgresql&logoColor=white)](https://orm.drizzle.team)
 
-<!-- Live demo: https://nyotanow.vercel.app -->
+**[Try it live → nyotanow.vercel.app](https://nyotanow.vercel.app)**
 
 </div>
 
@@ -186,18 +186,19 @@ single component scales from a 320px preview to a 1080px export with identical l
 duplicated styles.
 
 **PNG export that actually matches the screen.** `html-to-image` copies each element's
-computed styles into an SVG and rounds every font-size down (`floor(px) - 0.1`). On a 340px
-card that's a ~1% shrink, which is enough to re-wrap a title that sits near a line break, while
-the copied height stays put, so text overlaps. The card is therefore exported from an
-off-screen copy rendered at the full 1080px, where the rounding is ~0.1%, and every text line
-stretches to the card's width instead of shrink-wrapping its own content, so wrapping depends
-on the card and not on glyph widths.
+computed styles into an SVG and rounds every font-size down to `floor(px) - 0.1`. On the
+small on-screen card that's up to a ~3% shrink, enough to re-wrap a title that sits near a
+line break, while the copied height stays put, so text overlaps. Two changes fixed it: the
+card is exported from an off-screen copy rendered at the full 1080px (sharper, and the
+rounding matters less at larger sizes), and, the part that actually made it reliable, every
+text line stretches to the card's width instead of shrink-wrapping its own content, so
+wrapping depends on the card and not on glyph widths.
 
-**Devanagari.** Hindi cards name the Devanagari font explicitly instead of relying on
-per-glyph font fallback, because the fallback chain resolves differently inside the exported
-SVG than it does on screen. Separately, Satori (which powers `next/og`) cannot shape
-Devanagari at all, so the WhatsApp preview image substitutes English text for Hindi titles.
-The invite page and the PNG export remain fully Hindi.
+**Devanagari.** Hindi cards name the Devanagari font first instead of reaching it through the
+English font's per-glyph fallback, so the result doesn't depend on how each browser walks the
+fallback chain. Satori (which powers `next/og`) cannot shape Devanagari at all, so the WhatsApp
+preview image substitutes English text for Hindi titles. The invite page and the PNG export
+remain fully Hindi.
 
 **Two database drivers, one codebase.** `DATABASE_URL` unset means development, where an
 embedded PGlite database runs in-process, so the project needs no Docker and no setup. Set it
@@ -265,17 +266,21 @@ npx tsc --noEmit  # type check
 
 ## Deploy
 
-Runs on free tiers (Vercel + Neon):
+Runs on free tiers (Vercel + Neon). The live site uses the Vercel Marketplace Neon integration:
 
-1. Create a Postgres database on [Neon](https://neon.tech) and copy the pooled connection string.
-2. Import the repo on Vercel and set the environment variables:
+1. Import the repo on Vercel and set `NEXT_PUBLIC_SITE_URL` to your production URL
+   (e.g. `https://nyotanow.vercel.app`).
+2. In Vercel → Storage, create a Neon database and connect it to the project. **Set the
+   environment variable prefix to `DATABASE`** so it injects `DATABASE_URL`. The dialog
+   defaults to `STORAGE`, which would create `STORAGE_URL`; the build would still pass, but
+   the first invite would fail.
+3. Redeploy. Migrations apply automatically on the first request.
 
-   | Variable | Example |
-   | --- | --- |
-   | `DATABASE_URL` | `postgres://…` (pooled) |
-   | `NEXT_PUBLIC_SITE_URL` | `https://nyotanow.in` |
+Putting the server and database in the same region matters. For Indian users, pick
+Singapore for the Neon database and set the project's Function Region to `sin1`
+(Settings → Functions). A Neon database's region can't be changed after creation.
 
-3. Deploy. Migrations apply automatically on the first request.
+Any other Postgres works too: set `DATABASE_URL` to its pooled connection string.
 
 ---
 
