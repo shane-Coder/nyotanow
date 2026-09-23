@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getStats, type Stats } from "@/db/queries";
 import { getOccasion } from "@/lib/occasions";
+import { agoLabel, fetchSentryIssues, type SentryFeed } from "@/lib/sentry-issues";
 
 export const metadata: Metadata = { title: "Stats", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
   const { key } = await searchParams;
   if (!keyOk(typeof key === "string" ? key : undefined)) notFound();
 
-  const s = await getStats();
+  const [s, errors] = await Promise.all([getStats(), fetchSentryIssues()]);
   const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
   const trend = s.prev7 === 0 ? (s.last7 > 0 ? "new" : "flat") : `${s.last7 >= s.prev7 ? "+" : ""}${pct(s.last7 - s.prev7, s.prev7)}%`;
 
@@ -80,6 +81,10 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         </Panel>
       </div>
 
+      <Panel title="Errors (last 14 days)">
+        <Errors feed={errors} />
+      </Panel>
+
       <Panel title="Latest invites">
         {s.recent.length === 0 ? (
           <p className="text-stone-500">Nothing yet.</p>
@@ -118,6 +123,66 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         )}
       </Panel>
     </main>
+  );
+}
+
+function Errors({ feed }: { feed: SentryFeed }) {
+  if (feed.state === "off") {
+    return (
+      <p className="text-sm text-stone-500">
+        Not connected. Set <code className="rounded bg-stone-100 px-1">SENTRY_ORG</code>,{" "}
+        <code className="rounded bg-stone-100 px-1">SENTRY_PROJECT</code> and{" "}
+        <code className="rounded bg-stone-100 px-1">SENTRY_AUTH_TOKEN</code> (scope{" "}
+        <code className="rounded bg-stone-100 px-1">event:read</code>) in Vercel, then redeploy.
+      </p>
+    );
+  }
+
+  if (feed.state === "error") {
+    return (
+      <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        Couldn&apos;t read Sentry: {feed.message}. Your invite numbers above are unaffected.
+      </p>
+    );
+  }
+
+  if (feed.issues.length === 0) {
+    return <p className="text-stone-500">Nothing unresolved. 🎉</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs text-stone-500 uppercase">
+          <tr>
+            <th className="pb-2">Error</th>
+            <th className="pb-2 text-right">Events</th>
+            <th className="pb-2 text-right">Users</th>
+            <th className="pb-2 text-right">Last</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-stone-100">
+          {feed.issues.map((i) => (
+            <tr key={i.id}>
+              <td className="max-w-[320px] py-2 pr-3">
+                <a
+                  href={i.permalink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block truncate font-medium hover:underline"
+                >
+                  {i.title}
+                </a>
+                <span className="block truncate text-xs text-stone-500">{i.culprit}</span>
+              </td>
+              <td className="py-2 text-right tabular-nums">{i.count}</td>
+              <td className="py-2 text-right tabular-nums">{i.userCount}</td>
+              <td className="py-2 text-right text-stone-500 tabular-nums">{agoLabel(i.lastSeen)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
