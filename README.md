@@ -12,6 +12,8 @@
 
 **[Try it live → nyotanow.vercel.app](https://nyotanow.vercel.app)**
 
+[How it was built, and what broke →](https://medium.com/@shivamrajomar/i-built-a-whatsapp-invite-app-for-indian-families-heres-what-broke-ac5b04eec575)
+
 </div>
 
 ---
