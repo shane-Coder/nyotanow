@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useState, type ReactNode } from "react";
-import { useStoredValue } from "@/lib/client-store";
+import { useStoredValue, useTodayInIST } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
-import { todayInIST, type InviteData } from "@/lib/invite";
+import { isPastDate, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
@@ -26,8 +26,11 @@ export function CreateForm({ initial, action, mode }: Props) {
   const designs = templatesFor(data.occasion)
     .map((id) => TEMPLATES.find((t) => t.id === id)!)
     .filter(Boolean);
-  // Warn before submitting rather than only after the server rejects it.
-  const datePassed = data.date !== "" && data.date < todayInIST();
+  // Null until mounted, so the prerendered HTML carries no date of its own.
+  const today = useTodayInIST();
+  // A backstop: the picker below already refuses past dates, but min= is only
+  // as good as the browser honouring it.
+  const datePassed = today !== null && isPastDate(data.date, today);
   const dateError =
     errors.date ??
     (datePassed
@@ -151,6 +154,10 @@ export function CreateForm({ initial, action, mode }: Props) {
                 name="date"
                 value={data.date}
                 onChange={(e) => set("date", e.target.value)}
+                // Opens the calendar on today and greys out everything before
+                // it. Only while creating: editing an event that has already
+                // happened is allowed, it just warns.
+                min={mode === "create" ? (today ?? undefined) : undefined}
                 required
                 className={input}
               />

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventDayParts,
+  isPastDate,
   eventStart,
   formatEventDate,
   formatEventTime,
@@ -170,5 +171,33 @@ describe("eventDayParts", () => {
 
   it("returns empty strings rather than NaN when no date is set yet", () => {
     expect(eventDayParts("", "en")).toEqual({ day: "", month: "" });
+  });
+});
+
+describe("isPastDate", () => {
+  const today = "2026-09-23";
+
+  it("rejects yesterday", () => {
+    expect(isPastDate("2026-09-22", today)).toBe(true);
+  });
+
+  it("allows today, because an event can be this evening", () => {
+    expect(isPastDate("2026-09-23", today)).toBe(false);
+  });
+
+  it("allows any future date", () => {
+    expect(isPastDate("2026-12-25", today)).toBe(false);
+  });
+
+  it("treats an empty date as not-yet-chosen rather than past", () => {
+    // Otherwise the form would show an error before the host has picked one.
+    expect(isPastDate("", today)).toBe(false);
+  });
+
+  it("compares by Indian date, so an evening in India is not yesterday", () => {
+    // 19:00 UTC on the 23rd is already 00:30 on the 24th in India.
+    const now = new Date("2026-09-23T19:00:00Z");
+    expect(isPastDate("2026-09-23", todayInIST(now))).toBe(true);
+    expect(isPastDate("2026-09-24", todayInIST(now))).toBe(false);
   });
 });

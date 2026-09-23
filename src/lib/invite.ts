@@ -41,6 +41,11 @@ export function todayInIST(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: EVENT_TZ }).format(now);
 }
 
+/** True when a date is before today in India. An empty date is not "past". */
+export function isPastDate(date: string, today: string = todayInIST()): boolean {
+  return date !== "" && date < today;
+}
+
 export function formatEventDate(date: string, lang: Lang): string {
   if (!date) return "";
   return new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { todayInIST } from "./invite";
 
 /* ---------------- localStorage, readable during render ---------------- */
 
@@ -72,6 +73,46 @@ export function useNow(): number | null {
   return useSyncExternalStore(
     subscribeClock,
     () => (now ||= Date.now()),
+    () => null,
+  );
+}
+
+/* ---------------------- today's date in India ---------------------- */
+
+const dayListeners = new Set<() => void>();
+let dayTimer: ReturnType<typeof setInterval> | undefined;
+let today = "";
+
+// Checked once a minute rather than with a midnight timer: a tab left open
+// overnight should not keep offering yesterday as a valid date.
+function subscribeDay(cb: () => void) {
+  dayListeners.add(cb);
+  dayTimer ??= setInterval(() => {
+    const next = todayInIST();
+    if (next !== today) {
+      today = next;
+      dayListeners.forEach((l) => l());
+    }
+  }, 60_000);
+  return () => {
+    dayListeners.delete(cb);
+    if (!dayListeners.size && dayTimer) {
+      clearInterval(dayTimer);
+      dayTimer = undefined;
+    }
+  };
+}
+
+/**
+ * Today in India as YYYY-MM-DD, or null during SSR.
+ *
+ * Null on the server matters: the create pages are prerendered at build time,
+ * so a date baked into the HTML would be stale by the next day.
+ */
+export function useTodayInIST(): string | null {
+  return useSyncExternalStore(
+    subscribeDay,
+    () => (today ||= todayInIST()),
     () => null,
   );
 }
