@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
 import { inviteSchema, rsvpSchema, todayInIST, type RsvpStatus } from "@/lib/invite";
+import { rateLimited } from "@/lib/rate-limit";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> } | undefined;
 
@@ -33,6 +34,10 @@ function invalid(error: import("zod").ZodError): FormState {
 }
 
 export async function createInviteAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  // Honeypot: real people never see or fill this field. Pretend it worked so a
+  // bot gets no signal, but send it to the homepage instead of creating a row.
+  if (formData.get("website")) redirect("/");
+
   const parsed = parseInvite(formData);
   if (!parsed.success) return invalid(parsed.error);
   if (parsed.data.date < todayInIST()) {
@@ -41,6 +46,11 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
       fieldErrors: { date: ["That date has already passed. Pick today or a later date."] },
     };
   }
+
+  // Checked only once the invite is known to be valid, so a flood of junk
+  // submissions can't spend a real host's allowance.
+  const limited = await rateLimited("create");
+  if (limited) return { error: limited };
 
   // Only a fixed label, never arbitrary text from the form.
   const source = formData.get("source") === "invite" ? "invite" : "";
@@ -95,6 +105,9 @@ export async function rsvpAction(slug: string, _prev: RsvpState, formData: FormD
 
   const invite = await findInvite(slug);
   if (!invite) return { ok: false, error: "This invite no longer exists." };
+
+  const limited = await rateLimited("rsvp");
+  if (limited) return { ok: false, error: limited };
 
   const replaces = formData.get("replaces");
   let id: string;

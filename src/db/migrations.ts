@@ -48,4 +48,21 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE invites ADD COLUMN source text NOT NULL DEFAULT '';
     `,
   },
+  {
+    name: "0003_rate_limits",
+    sql: `
+      -- One row per (action, caller, time window). Postgres is the only state
+      -- serverless instances share, so the counter has to live here.
+      CREATE TABLE rate_limits (
+        bucket       text NOT NULL,
+        subject      text NOT NULL,
+        window_start timestamptz NOT NULL,
+        hits         integer NOT NULL DEFAULT 0,
+        PRIMARY KEY (bucket, subject, window_start)
+      );
+
+      -- Only used by the periodic cleanup of expired windows.
+      CREATE INDEX rate_limits_window_start_idx ON rate_limits (window_start);
+    `,
+  },
 ];

@@ -74,6 +74,8 @@ export function CreateForm({ initial, action, mode }: Props) {
         <input key={k} type="hidden" name={k} value={data[k]} />
       ))}
       {mode === "create" && <input type="hidden" name="source" value={referrer} />}
+      {/* Honeypot: off-screen and skipped by tab order, so only bots fill it. */}
+      <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-0 w-0" />
 
       {/* Preview: first on mobile so people see the result straight away. */}
       <div className="lg:order-2">

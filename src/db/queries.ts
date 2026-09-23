@@ -9,6 +9,14 @@ import { invites, rsvps, type InviteRow, type RsvpRow } from "./schema";
 const suffix = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 5);
 const secret = customAlphabet("abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", 24);
 
+/**
+ * postgres-js returns rows as a plain array, PGlite wraps them in `{ rows }`.
+ * Everything that uses db.execute goes through this.
+ */
+function rows<T>(r: { rows?: T[] } | T[]): T[] {
+  return Array.isArray(r) ? r : (r.rows ?? []);
+}
+
 function hashKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }
@@ -128,6 +136,41 @@ export async function comingCount(inviteId: string): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
+/* --------------------------- rate limiting --------------------------- */
+
+/**
+ * Counts one hit in the current fixed window and returns the running total,
+ * so `total > max` means the caller is over the limit.
+ *
+ * The window boundary is computed by Postgres rather than by the app, so
+ * instances with skewed clocks still agree on which window they are in. The
+ * INSERT ... ON CONFLICT is a single atomic statement, so concurrent requests
+ * cannot both read a stale count.
+ */
+export async function hitRateLimit(bucket: string, subject: string, windowSeconds: number): Promise<number> {
+  const db = await getDb();
+  const [row] = rows<{ hits: number }>(
+    await db.execute(sql`
+      INSERT INTO rate_limits (bucket, subject, window_start, hits)
+      VALUES (
+        ${bucket},
+        ${subject},
+        to_timestamp(floor(extract(epoch FROM now()) / ${windowSeconds}) * ${windowSeconds}),
+        1
+      )
+      ON CONFLICT (bucket, subject, window_start) DO UPDATE SET hits = rate_limits.hits + 1
+      RETURNING hits
+    `),
+  );
+  return Number(row?.hits ?? 0);
+}
+
+/** Drops windows that can no longer be current. Cheap enough to run inline. */
+export async function pruneRateLimits(): Promise<void> {
+  const db = await getDb();
+  await db.execute(sql`DELETE FROM rate_limits WHERE window_start < now() - interval '2 days'`);
+}
+
 /* ------------------------------ stats ------------------------------ */
 
 export type Stats = {
@@ -149,7 +192,6 @@ export type Stats = {
 /** Everything the private /stats page shows, in one round trip per section. */
 export async function getStats(): Promise<Stats> {
   const db = await getDb();
-  const rows = <T>(r: { rows?: T[] } | T[]): T[] => (Array.isArray(r) ? r : (r.rows ?? []));
 
   const [totals] = rows<{
     invites: number;

@@ -1,4 +1,4 @@
-import { boolean, date, index, integer, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const invites = pgTable("invites", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -38,6 +38,24 @@ export const rsvps = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("rsvps_invite_id_idx").on(t.inviteId)],
+);
+
+/**
+ * Fixed-window counters for the public write actions. Serverless instances
+ * share nothing but the database, so the count has to live here.
+ */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    bucket: text("bucket").notNull(),
+    subject: text("subject").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bucket, t.subject, t.windowStart] }),
+    index("rate_limits_window_start_idx").on(t.windowStart),
+  ],
 );
 
 export type InviteRow = typeof invites.$inferSelect;
