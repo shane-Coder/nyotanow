@@ -5,6 +5,10 @@ export const TEMPLATES = [
   { id: "classic", name: "Elegant" },
   { id: "confetti", name: "Fun" },
   { id: "shubh", name: "Shubh" },
+  { id: "botanical", name: "Botanical" },
+  { id: "minimal", name: "Minimal" },
+  { id: "poster", name: "Poster" },
+  { id: "mehrab", name: "Mehrab" },
 ] as const;
 export type TemplateId = (typeof TEMPLATES)[number]["id"];
 export const TEMPLATE_IDS = TEMPLATES.map((t) => t.id) as [TemplateId, ...TemplateId[]];
@@ -35,4 +39,42 @@ export const PALETTE_IDS = PALETTES.map((p) => p.id) as [PaletteId, ...PaletteId
 
 export function getPalette(id: string): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];
+}
+
+/**
+ * Which designs to show first for each occasion. Every template still works
+ * for every occasion; this only changes the order, so a birthday host is not
+ * greeted by a temple arch and a griha pravesh host is not greeted by confetti.
+ * Anything left out follows in the order declared above.
+ */
+const PREFERRED: Record<string, readonly TemplateId[]> = {
+  birthday: ["confetti", "poster", "botanical"],
+  anniversary: ["classic", "botanical", "minimal"],
+  "griha-pravesh": ["shubh", "mehrab", "classic"],
+  "baby-shower": ["botanical", "confetti", "minimal"],
+  pooja: ["mehrab", "shubh", "classic"],
+  party: ["poster", "confetti", "minimal"],
+};
+
+export function templatesFor(occasion: string): readonly TemplateId[] {
+  const first = PREFERRED[occasion] ?? [];
+  return [...first, ...TEMPLATE_IDS.filter((id) => !first.includes(id))];
+}
+
+/**
+ * The palette each template is shown with in the design gallery. Picked so the
+ * grid reads as distinct designs rather than the same card seven times.
+ */
+const GALLERY_PALETTE: Record<TemplateId, PaletteId> = {
+  classic: "royal",
+  confetti: "rose",
+  shubh: "maroon",
+  botanical: "mint",
+  minimal: "sky",
+  poster: "marigold",
+  mehrab: "peacock",
+};
+
+export function galleryPalette(template: TemplateId): PaletteId {
+  return GALLERY_PALETTE[template];
 }

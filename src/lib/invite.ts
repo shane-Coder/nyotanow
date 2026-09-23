@@ -64,6 +64,17 @@ export function formatEventTime(date: string, time: string, lang: Lang): string 
     .toUpperCase();
 }
 
+/** Day number and short month, in IST, for templates that set the date in large type. */
+export function eventDayParts(date: string, lang: Lang): { day: string; month: string } {
+  if (!date) return { day: "", month: "" };
+  const at = eventStart(date, "12:00");
+  const locale = lang === "hi" ? "hi-IN" : "en-IN";
+  return {
+    day: new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: EVENT_TZ }).format(at),
+    month: new Intl.DateTimeFormat(locale, { month: "short", timeZone: EVENT_TZ }).format(at),
+  };
+}
+
 export function mapsUrl(venue: string, address: string): string {
   const q = [venue, address].filter(Boolean).join(", ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;

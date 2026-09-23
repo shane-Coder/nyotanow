@@ -6,7 +6,7 @@ import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
 import { todayInIST, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
-import { PALETTES, TEMPLATES, type Lang } from "@/lib/themes";
+import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
 
 type Props = {
@@ -22,6 +22,10 @@ export function CreateForm({ initial, action, mode }: Props) {
   // Set when this host arrived from another invite's footer.
   const referrer = useStoredValue(REFERRER_KEY) === "invite" ? "invite" : "";
   const errors = state?.fieldErrors ?? {};
+  // Same designs for every occasion, just ordered so the fitting ones lead.
+  const designs = templatesFor(data.occasion)
+    .map((id) => TEMPLATES.find((t) => t.id === id)!)
+    .filter(Boolean);
   // Warn before submitting rather than only after the server rejects it.
   const datePassed = data.date !== "" && data.date < todayInIST();
   const dateError =
@@ -207,8 +211,12 @@ export function CreateForm({ initial, action, mode }: Props) {
         </Section>
 
         <Section title="Design">
-          <div className="grid grid-cols-3 gap-3">
-            {TEMPLATES.map((t) => (
+          <p className="mb-2 text-sm text-stone-500">
+            {TEMPLATES.length} designs, shown in your colours. Tap one to try it.
+          </p>
+          {/* Ordered for the chosen occasion, so the most fitting designs come first. */}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {designs.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -225,7 +233,6 @@ export function CreateForm({ initial, action, mode }: Props) {
               </button>
             ))}
           </div>
-
           <p className="mt-5 mb-2 text-sm font-medium text-stone-600">Colours</p>
           <div className="flex flex-wrap gap-3">
             {PALETTES.map((p) => (

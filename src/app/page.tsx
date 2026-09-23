@@ -5,6 +5,7 @@ import { RememberReferrer } from "@/components/RememberReferrer";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import type { InviteData } from "@/lib/invite";
 import { OCCASIONS } from "@/lib/occasions";
+import { PALETTES, TEMPLATES, galleryPalette } from "@/lib/themes";
 
 const SAMPLES: InviteData[] = [
   {
@@ -48,6 +49,109 @@ const SAMPLES: InviteData[] = [
     venue: "Hotel Rajmahal",
     address: "Civil Lines, Jaipur",
     message: "25 years of love, laughter and togetherness.",
+  },
+];
+
+// One card per design for the homepage row, each in its own colour set and a
+// fitting occasion, so the row shows what the designs actually look like.
+const DESIGN_SAMPLES: InviteData[] = [
+  {
+    occasion: "birthday",
+    template: "confetti",
+    palette: galleryPalette("confetti"),
+    lang: "en",
+    kicker: "You're invited to",
+    title: "Aarav's 5th Birthday",
+    hostedBy: "Neha & Rohit",
+    date: "2026-10-25",
+    time: "17:00",
+    venue: "Funcity Play Zone",
+    address: "DLF Mall, Noida",
+    message: "Cake, games and lots of fun!",
+  },
+  {
+    occasion: "griha-pravesh",
+    template: "shubh",
+    palette: galleryPalette("shubh"),
+    lang: "hi",
+    kicker: "ईश्वर की कृपा से",
+    title: "हमारे नए घर का गृह प्रवेश",
+    hostedBy: "वर्मा परिवार",
+    date: "2026-11-08",
+    time: "10:30",
+    venue: "B-204, Green Valley",
+    address: "Sector 62, Noida",
+    message: "कृपया पधारकर आशीर्वाद दें।",
+  },
+  {
+    occasion: "anniversary",
+    template: "classic",
+    palette: galleryPalette("classic"),
+    lang: "en",
+    kicker: "Please join us to celebrate",
+    title: "25 Years Together",
+    hostedBy: "The Sharma Family",
+    date: "2026-12-12",
+    time: "19:30",
+    venue: "Hotel Rajmahal",
+    address: "Civil Lines, Jaipur",
+    message: "Love, laughter and togetherness.",
+  },
+  {
+    occasion: "baby-shower",
+    template: "botanical",
+    palette: galleryPalette("botanical"),
+    lang: "en",
+    kicker: "A little one is on the way",
+    title: "Meera's Godh Bharai",
+    hostedBy: "The Iyer Family",
+    date: "2026-11-22",
+    time: "12:00",
+    venue: "Rose Garden Hall",
+    address: "Koramangala, Bengaluru",
+    message: "Blessings and sweets await.",
+  },
+  {
+    occasion: "party",
+    template: "poster",
+    palette: galleryPalette("poster"),
+    lang: "en",
+    kicker: "Save the date",
+    title: "Diwali Night",
+    hostedBy: "Flat 402",
+    date: "2026-11-07",
+    time: "20:00",
+    venue: "Terrace, Tower B",
+    address: "Powai, Mumbai",
+    message: "Lights, music and too much food.",
+  },
+  {
+    occasion: "pooja",
+    template: "mehrab",
+    palette: galleryPalette("mehrab"),
+    lang: "hi",
+    kicker: "सादर आमंत्रण",
+    title: "सत्यनारायण पूजा",
+    hostedBy: "शर्मा परिवार",
+    date: "2026-10-30",
+    time: "09:00",
+    venue: "श्री राम मंदिर",
+    address: "लाजपत नगर, दिल्ली",
+    message: "प्रसाद का आनंद लें।",
+  },
+  {
+    occasion: "anniversary",
+    template: "minimal",
+    palette: galleryPalette("minimal"),
+    lang: "en",
+    kicker: "You're invited",
+    title: "Housewarming Drinks",
+    hostedBy: "Ananya & Kabir",
+    date: "2026-12-05",
+    time: "19:00",
+    venue: "The Terrace, 11th Floor",
+    address: "Indiranagar, Bengaluru",
+    message: "Come see the new place.",
   },
 ];
 
@@ -145,6 +249,33 @@ export default function Home() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section className="bg-orange-50/60 py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <h2 className="text-center font-serif text-3xl font-bold text-brand-ink sm:text-4xl">
+              {TEMPLATES.length} designs, {PALETTES.length} colour sets
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-stone-600">
+              Every design works in Hindi and English, with real Devanagari type — not a translation pasted on top.
+            </p>
+            {/* Each one in a different colour set, so the row shows the range rather than claiming it. */}
+            <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {DESIGN_SAMPLES.map((sample) => (
+                <div key={sample.template} className="overflow-hidden rounded-2xl shadow-md ring-1 ring-stone-200">
+                  <InviteCard invite={sample} />
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <Link
+                href="/create/birthday"
+                className="inline-block rounded-full bg-brand px-8 py-4 text-lg font-bold text-white shadow-lg shadow-orange-600/25 transition hover:brightness-110"
+              >
+                Try a design free
+              </Link>
+            </div>
           </div>
         </section>
 

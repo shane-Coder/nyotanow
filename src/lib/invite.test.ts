@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  eventDayParts,
   eventStart,
   formatEventDate,
   formatEventTime,
@@ -154,5 +155,20 @@ describe("validation", () => {
 
   it("accepts the guest count as the string a form actually sends", () => {
     expect(rsvpSchema.safeParse({ name: "A", status: "yes", guests: "3", note: "" }).success).toBe(true);
+  });
+});
+
+describe("eventDayParts", () => {
+  it("gives the day number and short month for the Poster design", () => {
+    expect(eventDayParts("2026-10-25", "en")).toEqual({ day: "25", month: "Oct" });
+  });
+
+  it("uses the Indian calendar day, not the UTC one", () => {
+    // 2026-01-01 at midnight IST is still 2025-12-31 in UTC.
+    expect(eventDayParts("2026-01-01", "en").day).toBe("1");
+  });
+
+  it("returns empty strings rather than NaN when no date is set yet", () => {
+    expect(eventDayParts("", "en")).toEqual({ day: "", month: "" });
   });
 });
