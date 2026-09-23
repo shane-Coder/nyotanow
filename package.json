@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@sentry/nextjs": "^10.75.2",
     "@vercel/analytics": "^2.0.1",
     "drizzle-orm": "^0.45.2",
     "html-to-image": "^1.11.13",

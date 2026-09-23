@@ -1,0 +1,10 @@
+// Edge runtime. Nothing runs on the edge today, but Next loads this when
+// something does, and an uninitialised runtime reports nothing.
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
+  enabled: Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN),
+  tracesSampleRate: 0,
+  sendDefaultPii: false,
+});
