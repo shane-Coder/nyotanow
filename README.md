@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Postgres](https://img.shields.io/badge/Postgres-Drizzle_ORM-4169E1?logo=postgresql&logoColor=white)](https://orm.drizzle.team)
 
-**[Try it live → nyotanow.vercel.app](https://nyotanow.vercel.app)**
+**[Try it live → nyotanow.vercel.app](https://nyotanow.vercel.app/?utm_source=github)**
 
 [How it was built, and what broke →](https://medium.com/@shivamrajomar/i-built-a-whatsapp-invite-app-for-indian-families-heres-what-broke-ac5b04eec575)
 
