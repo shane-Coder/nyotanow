@@ -41,9 +41,34 @@ export function todayInIST(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: EVENT_TZ }).format(now);
 }
 
-/** True when a date is before today in India. An empty date is not "past". */
-export function isPastDate(date: string, today: string = todayInIST()): boolean {
-  return date !== "" && date < today;
+/** The current time in India as "HH:MM", comparable with invite times as plain strings. */
+export function timeNowInIST(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: EVENT_TZ,
+  }).format(now);
+}
+
+/**
+ * True when an event's start has already gone by, comparing plain strings so
+ * the client needs no timezone maths of its own.
+ *
+ * An empty date means the host hasn't picked one yet, not that it's past. An
+ * event today with no time set is still ahead of us, because it could be
+ * happening this evening.
+ */
+export function isPastEventAt(date: string, time: string, nowDate: string, nowTime: string): boolean {
+  if (!date) return false;
+  if (date < nowDate) return true;
+  if (date > nowDate) return false;
+  return time !== "" && time < nowTime;
+}
+
+/** isPastEventAt against the clock, for the server. */
+export function isPastEvent(date: string, time: string, now: Date = new Date()): boolean {
+  return isPastEventAt(date, time, todayInIST(now), timeNowInIST(now));
 }
 
 export function formatEventDate(date: string, lang: Lang): string {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   eventDayParts,
-  isPastDate,
+  isPastEvent,
+  isPastEventAt,
   eventStart,
   formatEventDate,
   formatEventTime,
@@ -11,6 +12,7 @@ import {
   rsvpSchema,
   shareMessage,
   slugBase,
+  timeNowInIST,
   todayInIST,
   type InviteData,
 } from "./invite";
@@ -174,30 +176,67 @@ describe("eventDayParts", () => {
   });
 });
 
-describe("isPastDate", () => {
-  const today = "2026-09-23";
+describe("isPastEventAt", () => {
+  const nowDate = "2026-09-23";
+  const nowTime = "18:30";
 
-  it("rejects yesterday", () => {
-    expect(isPastDate("2026-09-22", today)).toBe(true);
+  it("rejects yesterday whatever the time", () => {
+    expect(isPastEventAt("2026-09-22", "23:59", nowDate, nowTime)).toBe(true);
   });
 
-  it("allows today, because an event can be this evening", () => {
-    expect(isPastDate("2026-09-23", today)).toBe(false);
+  it("allows any future day, even at one minute past midnight", () => {
+    expect(isPastEventAt("2026-09-24", "00:01", nowDate, nowTime)).toBe(false);
   });
 
-  it("allows any future date", () => {
-    expect(isPastDate("2026-12-25", today)).toBe(false);
+  it("rejects a time earlier today", () => {
+    // The whole point of the feedback: today at 09:00 is not a future event.
+    expect(isPastEventAt("2026-09-23", "09:00", nowDate, nowTime)).toBe(true);
+  });
+
+  it("allows a time later today", () => {
+    expect(isPastEventAt("2026-09-23", "20:00", nowDate, nowTime)).toBe(false);
+  });
+
+  it("allows this very minute", () => {
+    expect(isPastEventAt("2026-09-23", "18:30", nowDate, nowTime)).toBe(false);
+  });
+
+  it("allows today with no time, because it could be this evening", () => {
+    expect(isPastEventAt("2026-09-23", "", nowDate, nowTime)).toBe(false);
   });
 
   it("treats an empty date as not-yet-chosen rather than past", () => {
-    // Otherwise the form would show an error before the host has picked one.
-    expect(isPastDate("", today)).toBe(false);
+    expect(isPastEventAt("", "", nowDate, nowTime)).toBe(false);
+    expect(isPastEventAt("", "09:00", nowDate, nowTime)).toBe(false);
   });
 
-  it("compares by Indian date, so an evening in India is not yesterday", () => {
+  it("compares times as strings without tripping over single digits", () => {
+    expect(isPastEventAt("2026-09-23", "09:00", "2026-09-23", "10:00")).toBe(true);
+    expect(isPastEventAt("2026-09-23", "10:00", "2026-09-23", "09:00")).toBe(false);
+  });
+});
+
+describe("timeNowInIST", () => {
+  it("reads the clock in India, not in UTC", () => {
+    // 09:00 UTC is 14:30 IST.
+    expect(timeNowInIST(new Date("2026-09-23T09:00:00Z"))).toBe("14:30");
+  });
+
+  it("uses a 24-hour clock with a leading zero, matching an input's value", () => {
+    expect(timeNowInIST(new Date("2026-09-23T01:00:00Z"))).toBe("06:30");
+  });
+});
+
+describe("isPastEvent", () => {
+  it("uses the Indian evening, where UTC would still say yesterday", () => {
     // 19:00 UTC on the 23rd is already 00:30 on the 24th in India.
     const now = new Date("2026-09-23T19:00:00Z");
-    expect(isPastDate("2026-09-23", todayInIST(now))).toBe(true);
-    expect(isPastDate("2026-09-24", todayInIST(now))).toBe(false);
+    expect(isPastEvent("2026-09-23", "22:00", now)).toBe(true);
+    expect(isPastEvent("2026-09-24", "10:00", now)).toBe(false);
+  });
+
+  it("rejects an event that started an hour ago", () => {
+    const now = new Date("2026-09-23T12:00:00Z"); // 17:30 IST
+    expect(isPastEvent("2026-09-23", "16:30", now)).toBe(true);
   });
 });

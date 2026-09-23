@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useState, type ReactNode } from "react";
-import { useStoredValue, useTodayInIST } from "@/lib/client-store";
+import { useIstNow, useStoredValue } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
-import { isPastDate, type InviteData } from "@/lib/invite";
+import { isPastEventAt, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
@@ -26,15 +26,23 @@ export function CreateForm({ initial, action, mode }: Props) {
   const designs = templatesFor(data.occasion)
     .map((id) => TEMPLATES.find((t) => t.id === id)!)
     .filter(Boolean);
-  // Null until mounted, so the prerendered HTML carries no date of its own.
-  const today = useTodayInIST();
-  // A backstop: the picker below already refuses past dates, but min= is only
-  // as good as the browser honouring it.
-  const datePassed = today !== null && isPastDate(data.date, today);
+  // Null until mounted, so the prerendered HTML carries no clock of its own.
+  const ist = useIstNow();
+  // A backstop: the pickers below already refuse a moment that has gone, but
+  // min= is only as good as the browser honouring it.
+  const datePassed = ist !== null && isPastEventAt(data.date, data.time, ist.date, ist.time);
+  // Only the time is wrong when the day itself is still fine.
+  const onlyTimePassed = datePassed && ist !== null && data.date === ist.date;
   const dateError =
     errors.date ??
     (datePassed
-      ? [mode === "create" ? "This date has already passed" : "This date has passed, so guests will see the event as ended"]
+      ? [
+          mode === "create"
+            ? onlyTimePassed
+              ? "That time has already gone by today"
+              : "This date has already passed"
+            : "This date has passed, so guests will see the event as ended",
+        ]
       : undefined);
 
   const set = <K extends keyof InviteData>(key: K, value: InviteData[K]) => setData((d) => ({ ...d, [key]: value }));
@@ -157,13 +165,22 @@ export function CreateForm({ initial, action, mode }: Props) {
                 // Opens the calendar on today and greys out everything before
                 // it. Only while creating: editing an event that has already
                 // happened is allowed, it just warns.
-                min={mode === "create" ? (today ?? undefined) : undefined}
+                min={mode === "create" ? (ist?.date ?? undefined) : undefined}
                 required
                 className={input}
               />
             </Field>
             <Field label="Time" error={errors.time}>
-              <input type="time" name="time" value={data.time} onChange={(e) => set("time", e.target.value)} className={input} />
+              <input
+                type="time"
+                name="time"
+                value={data.time}
+                onChange={(e) => set("time", e.target.value)}
+                // Only constrained when the event is today: on any later day
+                // every hour is still ahead of us.
+                min={mode === "create" && ist !== null && data.date === ist.date ? ist.time : undefined}
+                className={input}
+              />
             </Field>
             <Field label="Venue" required error={errors.venue}>
               <input

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { todayInIST } from "./invite";
+import { timeNowInIST, todayInIST } from "./invite";
 
 /* ---------------- localStorage, readable during render ---------------- */
 
@@ -77,42 +77,50 @@ export function useNow(): number | null {
   );
 }
 
-/* ---------------------- today's date in India ---------------------- */
+/* ------------------- date and time in India ------------------- */
 
-const dayListeners = new Set<() => void>();
-let dayTimer: ReturnType<typeof setInterval> | undefined;
-let today = "";
+export type IstNow = { date: string; time: string };
 
-// Checked once a minute rather than with a midnight timer: a tab left open
-// overnight should not keep offering yesterday as a valid date.
-function subscribeDay(cb: () => void) {
-  dayListeners.add(cb);
-  dayTimer ??= setInterval(() => {
-    const next = todayInIST();
-    if (next !== today) {
-      today = next;
-      dayListeners.forEach((l) => l());
+const istListeners = new Set<() => void>();
+let istTimer: ReturnType<typeof setInterval> | undefined;
+// Cached so getSnapshot returns a stable reference; a fresh object each call
+// would make useSyncExternalStore re-render forever.
+let istNow: IstNow | null = null;
+
+function readIst(): IstNow {
+  return { date: todayInIST(), time: timeNowInIST() };
+}
+
+// Polled rather than scheduled on the minute: cheap, and it survives a laptop
+// waking from sleep, which a single timeout would not.
+function subscribeIst(cb: () => void) {
+  istListeners.add(cb);
+  istTimer ??= setInterval(() => {
+    const next = readIst();
+    if (!istNow || next.date !== istNow.date || next.time !== istNow.time) {
+      istNow = next;
+      istListeners.forEach((l) => l());
     }
-  }, 60_000);
+  }, 20_000);
   return () => {
-    dayListeners.delete(cb);
-    if (!dayListeners.size && dayTimer) {
-      clearInterval(dayTimer);
-      dayTimer = undefined;
+    istListeners.delete(cb);
+    if (!istListeners.size && istTimer) {
+      clearInterval(istTimer);
+      istTimer = undefined;
     }
   };
 }
 
 /**
- * Today in India as YYYY-MM-DD, or null during SSR.
+ * Today's date and the current minute in India, or null during SSR.
  *
  * Null on the server matters: the create pages are prerendered at build time,
- * so a date baked into the HTML would be stale by the next day.
+ * so anything baked into that HTML would be stale before anyone saw it.
  */
-export function useTodayInIST(): string | null {
+export function useIstNow(): IstNow | null {
   return useSyncExternalStore(
-    subscribeDay,
-    () => (today ||= todayInIST()),
+    subscribeIst,
+    () => (istNow ??= readIst()),
     () => null,
   );
 }

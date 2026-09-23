@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
-import { inviteSchema, isPastDate, rsvpSchema, type RsvpStatus } from "@/lib/invite";
+import { inviteSchema, isPastEvent, rsvpSchema, type RsvpStatus } from "@/lib/invite";
 import { rateLimited } from "@/lib/rate-limit";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> } | undefined;
@@ -40,10 +40,10 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
 
   const parsed = parseInvite(formData);
   if (!parsed.success) return invalid(parsed.error);
-  if (isPastDate(parsed.data.date)) {
+  if (isPastEvent(parsed.data.date, parsed.data.time)) {
     return {
       error: "Please fix the highlighted fields.",
-      fieldErrors: { date: ["That date has already passed. Pick today or a later date."] },
+      fieldErrors: { date: ["That moment has already passed. Pick a time still to come."] },
     };
   }
 
