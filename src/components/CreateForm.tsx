@@ -4,7 +4,7 @@ import { useActionState, useState, type ReactNode } from "react";
 import { useIstNow, useStoredValue } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
-import { isPastEventAt, type InviteData } from "@/lib/invite";
+import { clampToFuture, isPastEventAt, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
@@ -46,6 +46,30 @@ export function CreateForm({ initial, action, mode }: Props) {
       : undefined);
 
   const set = <K extends keyof InviteData>(key: K, value: InviteData[K]) => setData((d) => ({ ...d, [key]: value }));
+
+  // Shown after a correction, so the field changing under the host's finger
+  // reads as a rule rather than a glitch. WebKit users see this most.
+  const [nudged, setNudged] = useState(false);
+
+  /**
+   * WebKit ignores min= on date and time inputs, so on iPhone and iPad the
+   * picker happily offers this morning. Correcting on blur rather than on
+   * change leaves desktop typing alone: a half-typed year is not yet a choice.
+   */
+  const clampOnBlur = () => {
+    if (mode !== "create" || ist === null) return;
+    setData((d) => {
+      const fixed = clampToFuture(d.date, d.time, ist.date, ist.time);
+      if (fixed.date === d.date && fixed.time === d.time) return d;
+      setNudged(true);
+      return { ...d, ...fixed };
+    });
+  };
+
+  const setWhen = <K extends "date" | "time">(key: K, value: string) => {
+    setNudged(false);
+    set(key, value);
+  };
 
   // Switching language swaps the default wording, but never text the host typed.
   function switchLang(lang: Lang) {
@@ -161,9 +185,11 @@ export function CreateForm({ initial, action, mode }: Props) {
                 type="date"
                 name="date"
                 value={data.date}
-                onChange={(e) => set("date", e.target.value)}
-                // Opens the calendar on today and greys out everything before
-                // it. Only while creating: editing an event that has already
+                onChange={(e) => setWhen("date", e.target.value)}
+                onBlur={clampOnBlur}
+                // Greys out earlier days everywhere except WebKit, which
+                // ignores this; clampOnBlur is what covers iPhone and iPad.
+                // Only while creating: editing an event that has already
                 // happened is allowed, it just warns.
                 min={mode === "create" ? (ist?.date ?? undefined) : undefined}
                 required
@@ -175,13 +201,19 @@ export function CreateForm({ initial, action, mode }: Props) {
                 type="time"
                 name="time"
                 value={data.time}
-                onChange={(e) => set("time", e.target.value)}
+                onChange={(e) => setWhen("time", e.target.value)}
+                onBlur={clampOnBlur}
                 // Only constrained when the event is today: on any later day
                 // every hour is still ahead of us.
                 min={mode === "create" && ist !== null && data.date === ist.date ? ist.time : undefined}
                 className={input}
               />
             </Field>
+            {nudged && (
+              <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2">
+                That moment had already passed, so we moved it to the earliest one still available.
+              </p>
+            )}
             <Field label="Venue" required error={errors.venue}>
               <input
                 name="venue"
@@ -282,7 +314,7 @@ export function CreateForm({ initial, action, mode }: Props) {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || (mode === "create" && datePassed)}
             className="mx-auto block w-full max-w-md rounded-full bg-[var(--brand)] py-4 text-base font-bold text-white shadow-lg shadow-orange-600/25 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60 lg:mx-0"
           >
             {pending ? "Creating…" : publishLabel}

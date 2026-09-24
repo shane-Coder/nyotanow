@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampToFuture,
   eventDayParts,
   isPastEvent,
   isPastEventAt,
@@ -238,5 +239,54 @@ describe("isPastEvent", () => {
   it("rejects an event that started an hour ago", () => {
     const now = new Date("2026-09-23T12:00:00Z"); // 17:30 IST
     expect(isPastEvent("2026-09-23", "16:30", now)).toBe(true);
+  });
+});
+
+describe("clampToFuture", () => {
+  const nowDate = "2026-09-24";
+  const nowTime = "10:00";
+
+  it("moves a past day to today", () => {
+    // WebKit ignores min=, so on iPhone this is the only thing stopping it.
+    expect(clampToFuture("2026-09-20", "18:00", nowDate, nowTime)).toEqual({ date: nowDate, time: "18:00" });
+  });
+
+  it("also lifts the time when moving the day forward would strand it", () => {
+    // 08:00 was fine on the 20th; on today it has already gone.
+    expect(clampToFuture("2026-09-20", "08:00", nowDate, nowTime)).toEqual({ date: nowDate, time: nowTime });
+  });
+
+  it("lifts a time that has gone by today", () => {
+    expect(clampToFuture(nowDate, "07:30", nowDate, nowTime)).toEqual({ date: nowDate, time: nowTime });
+  });
+
+  it("leaves a future day completely alone, whatever the hour", () => {
+    expect(clampToFuture("2026-12-25", "00:30", nowDate, nowTime)).toEqual({ date: "2026-12-25", time: "00:30" });
+  });
+
+  it("leaves a later time today alone", () => {
+    expect(clampToFuture(nowDate, "19:00", nowDate, nowTime)).toEqual({ date: nowDate, time: "19:00" });
+  });
+
+  it("keeps an empty time empty rather than inventing one", () => {
+    expect(clampToFuture("2026-09-20", "", nowDate, nowTime)).toEqual({ date: nowDate, time: "" });
+  });
+
+  it("does nothing before a date has been chosen", () => {
+    expect(clampToFuture("", "", nowDate, nowTime)).toEqual({ date: "", time: "" });
+  });
+
+  it("always returns something isPastEventAt accepts", () => {
+    const cases = [
+      ["2026-01-01", "00:00"],
+      ["2026-09-20", "08:00"],
+      [nowDate, "07:30"],
+      [nowDate, ""],
+      ["2026-12-25", "00:30"],
+    ] as const;
+    for (const [date, time] of cases) {
+      const fixed = clampToFuture(date, time, nowDate, nowTime);
+      expect(isPastEventAt(fixed.date, fixed.time, nowDate, nowTime)).toBe(false);
+    }
   });
 });

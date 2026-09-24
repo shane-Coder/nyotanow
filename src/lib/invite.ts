@@ -66,6 +66,28 @@ export function isPastEventAt(date: string, time: string, nowDate: string, nowTi
   return time !== "" && time < nowTime;
 }
 
+/**
+ * Moves a past date/time forward to the earliest moment still available.
+ *
+ * Needed because WebKit ignores min= on date and time inputs, so on iPhone and
+ * iPad nothing is greyed out and a host can pick this morning. Rather than let
+ * them find out when the server refuses it, the field corrects itself.
+ */
+export function clampToFuture(
+  date: string,
+  time: string,
+  nowDate: string,
+  nowTime: string,
+): { date: string; time: string } {
+  if (!date) return { date, time };
+  if (date < nowDate) {
+    // The day moves to today, which can strand a time earlier than right now.
+    return { date: nowDate, time: time !== "" && time < nowTime ? nowTime : time };
+  }
+  if (date === nowDate && time !== "" && time < nowTime) return { date, time: nowTime };
+  return { date, time };
+}
+
 /** isPastEventAt against the clock, for the server. */
 export function isPastEvent(date: string, time: string, now: Date = new Date()): boolean {
   return isPastEventAt(date, time, todayInIST(now), timeNowInIST(now));
