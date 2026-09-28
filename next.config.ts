@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/i/[slug]/opengraph-image": ["./assets/fonts/**"],
   },
+  async headers() {
+    return [
+      {
+        // Belt and braces: nothing linked from the private page should be able
+        // to learn where the click came from.
+        source: "/stats/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

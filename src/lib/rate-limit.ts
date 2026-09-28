@@ -14,11 +14,16 @@ const LIMITS = {
     { seconds: 60 * 60 * 24, max: 30 },
   ],
   rsvp: [{ seconds: 60 * 60, max: 30 }],
+  // Guessing the /stats key. Generous for the one person who owns it,
+  // pointless for anyone brute-forcing 24 random characters.
+  stats: [{ seconds: 60 * 60, max: 30 }],
 } satisfies Record<string, { seconds: number; max: number }[]>;
 
 const MESSAGES: Record<Bucket, string> = {
   create: "You've created a lot of invites just now. Please try again in a little while.",
   rsvp: "That's a lot of replies from this device. Please try again in a little while.",
+  // Never shown: the stats page 404s rather than explaining itself.
+  stats: "Too many attempts.",
 };
 
 export type Bucket = keyof typeof LIMITS;

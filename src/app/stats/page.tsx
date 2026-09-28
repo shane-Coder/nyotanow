@@ -1,27 +1,23 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { getStats, type Stats } from "@/db/queries";
 import { getOccasion } from "@/lib/occasions";
 import { agoLabel, fetchSentryIssues, type SentryFeed } from "@/lib/sentry-issues";
+import { STATS_COOKIE, cookieOk } from "@/lib/stats-auth";
 
 export const metadata: Metadata = { title: "Stats", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-function keyOk(given: string | undefined): boolean {
-  const expected = process.env.STATS_KEY;
-  // No key configured means the page stays closed, not open to everyone.
-  if (!expected || !given) return false;
-  const a = createHash("sha256").update(given).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
-}
-
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
+  // An old ?key= link still works: it is exchanged for a cookie and the key
+  // disappears from the address bar.
   const { key } = await searchParams;
-  if (!keyOk(typeof key === "string" ? key : undefined)) notFound();
+  if (typeof key === "string" && key !== "") redirect(`/stats/unlock?key=${encodeURIComponent(key)}`);
+
+  if (!cookieOk((await cookies()).get(STATS_COOKIE)?.value)) notFound();
 
   const [s, errors] = await Promise.all([getStats(), fetchSentryIssues()]);
   const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
