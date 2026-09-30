@@ -7,13 +7,18 @@ import { hitRateLimit, pruneRateLimits } from "@/db/queries";
  * script would also lock out real families sharing a carrier IP. The goal here
  * is to keep one bored person with a loop from drowning the stats, not to be
  * airtight.
+ *
+ * Raised for a campaign: a burst of arrivals from one Instagram post can put
+ * dozens of genuine hosts behind the same carrier address within an hour, and
+ * being told "you have created a lot of invites" on your first one is a far
+ * worse outcome than a few junk rows.
  */
 const LIMITS = {
   create: [
-    { seconds: 60 * 60, max: 10 },
-    { seconds: 60 * 60 * 24, max: 30 },
+    { seconds: 60 * 60, max: 30 },
+    { seconds: 60 * 60 * 24, max: 100 },
   ],
-  rsvp: [{ seconds: 60 * 60, max: 30 }],
+  rsvp: [{ seconds: 60 * 60, max: 60 }],
   // Guessing the /stats key. Generous for the one person who owns it,
   // pointless for anyone brute-forcing 24 random characters.
   stats: [{ seconds: 60 * 60, max: 30 }],
