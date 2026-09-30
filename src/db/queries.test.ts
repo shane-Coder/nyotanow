@@ -20,6 +20,7 @@ const {
   keyMatches,
   listRsvps,
   pruneRateLimits,
+  recordFooterClick,
   recordView,
   saveRsvp,
   updateInvite,
@@ -277,5 +278,36 @@ describe("getStats", () => {
     const { daily } = await getStats();
     expect(daily).toHaveLength(14);
     expect(daily.every((d) => typeof d.invites === "number")).toBe(true);
+  });
+});
+
+describe("footer clicks", () => {
+  it("counts a tap even when the guest never creates anything", async () => {
+    // The whole reason this exists: the old measure could not tell "nobody
+    // tapped" apart from "tapped in WhatsApp, came back later in Chrome".
+    const before = await getStats();
+    await recordFooterClick("some-invite-abcde");
+    const after = await getStats();
+    expect(after.footerClicks - before.footerClicks).toBe(1);
+    expect(after.invites).toBe(before.invites);
+  });
+
+  it("records which invite sent them", async () => {
+    const before = await getStats();
+    await recordFooterClick("diwali-dinner-xyz12");
+    await recordFooterClick("diwali-dinner-xyz12");
+    expect((await getStats()).footerClicks - before.footerClicks).toBe(2);
+  });
+
+  it("accepts an empty slug rather than refusing to count", async () => {
+    const before = await getStats();
+    await recordFooterClick("");
+    expect((await getStats()).footerClicks - before.footerClicks).toBe(1);
+  });
+
+  it("does not choke on an absurdly long slug", async () => {
+    const before = await getStats();
+    await recordFooterClick("x".repeat(500));
+    expect((await getStats()).footerClicks - before.footerClicks).toBe(1);
   });
 });

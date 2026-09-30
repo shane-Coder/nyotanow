@@ -40,6 +40,17 @@ export const rsvps = pgTable(
   (t) => [index("rsvps_invite_id_idx").on(t.inviteId)],
 );
 
+/** A guest tapping "create your own" on an invite footer. The top of the loop. */
+export const footerClicks = pgTable(
+  "footer_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("footer_clicks_created_at_idx").on(t.createdAt)],
+);
+
 /**
  * Fixed-window counters for the public write actions. Serverless instances
  * share nothing but the database, so the count has to live here.

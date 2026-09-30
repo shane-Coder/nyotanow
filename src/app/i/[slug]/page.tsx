@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { cache } from "react";
@@ -101,15 +100,17 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
           </section>
         )}
 
-        <Link
-          href="/?ref=invite"
+        {/* A plain anchor, not <Link>: prefetching a counting route would
+            record clicks nobody made. */}
+        <a
+          href={`/r/invite?from=${encodeURIComponent(slug)}`}
           className="mt-8 flex flex-col items-center gap-1 rounded-3xl bg-white/70 px-4 py-5 text-center ring-1 ring-black/5 transition hover:bg-white"
         >
           <span className="flex items-center gap-2 text-xs text-stone-500">
             {t.madeWith} <Logo className="text-lg" />
           </span>
           <span className="text-sm font-semibold text-brand">{t.createOwn}</span>
-        </Link>
+        </a>
       </main>
     </div>
   );

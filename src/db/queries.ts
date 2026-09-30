@@ -4,7 +4,7 @@ import { customAlphabet } from "nanoid";
 import type { InviteData } from "@/lib/invite";
 import { slugBase } from "@/lib/invite";
 import { getDb } from ".";
-import { invites, rsvps, type InviteRow, type RsvpRow } from "./schema";
+import { footerClicks, invites, rsvps, type InviteRow, type RsvpRow } from "./schema";
 
 const suffix = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 5);
 const secret = customAlphabet("abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", 24);
@@ -136,6 +136,14 @@ export async function comingCount(inviteId: string): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
+/* ----------------------------- the loop ----------------------------- */
+
+/** Records a guest tapping "create your own". Never blocks the redirect. */
+export async function recordFooterClick(slug: string): Promise<void> {
+  const db = await getDb();
+  await db.insert(footerClicks).values({ slug: slug.slice(0, 80) });
+}
+
 /* --------------------------- rate limiting --------------------------- */
 
 /**
@@ -180,6 +188,8 @@ export type Stats = {
   guestsComing: number;
   views: number;
   invitesWithRsvps: number;
+  /** Guests who tapped the invite footer. The step the old metric could not see. */
+  footerClicks: number;
   last7: number;
   prev7: number;
   daily: { day: string; invites: number; rsvps: number }[];
@@ -231,6 +241,10 @@ export async function getStats(): Promise<Stats> {
     `),
   );
 
+  const [fc] = rows<{ clicks: number }>(
+    await db.execute(sql`SELECT count(*)::int AS clicks FROM footer_clicks`),
+  );
+
   const byOccasion = rows<{ occasion: string; count: number }>(
     await db.execute(sql`SELECT occasion, count(*)::int AS count FROM invites GROUP BY occasion ORDER BY count DESC`),
   );
@@ -269,6 +283,7 @@ export async function getStats(): Promise<Stats> {
     rsvps: Number(r?.rsvps ?? 0),
     guestsComing: Number(r?.guests_coming ?? 0),
     invitesWithRsvps: Number(r?.invites_with_rsvps ?? 0),
+    footerClicks: Number(fc?.clicks ?? 0),
     daily: daily.map((d) => ({ day: d.day, invites: Number(d.invites), rsvps: Number(d.rsvps) })),
     byOccasion: byOccasion.map((o) => ({ occasion: o.occasion, count: Number(o.count) })),
     byLang: byLang.map((l) => ({ lang: l.lang, count: Number(l.count) })),

@@ -65,4 +65,20 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX rate_limits_window_start_idx ON rate_limits (window_start);
     `,
   },
+  {
+    name: "0004_footer_clicks",
+    sql: `
+      -- One row per guest who tapped "create your own" on an invite footer.
+      -- Counted on the server because the localStorage label cannot survive a
+      -- guest tapping in WhatsApp's browser and finishing in Chrome days later,
+      -- which is the likeliest journey there is.
+      CREATE TABLE footer_clicks (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug       text NOT NULL DEFAULT '',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX footer_clicks_created_at_idx ON footer_clicks (created_at);
+    `,
+  },
 ];

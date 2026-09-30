@@ -19,6 +19,8 @@ const LIMITS = {
     { seconds: 60 * 60 * 24, max: 100 },
   ],
   rsvp: [{ seconds: 60 * 60, max: 60 }],
+  // Footer taps. Only here to stop one device inflating the loop numbers.
+  footer: [{ seconds: 60 * 60, max: 60 }],
   // Guessing the /stats key. Generous for the one person who owns it,
   // pointless for anyone brute-forcing 24 random characters.
   stats: [{ seconds: 60 * 60, max: 30 }],
@@ -29,6 +31,8 @@ const MESSAGES: Record<Bucket, string> = {
   rsvp: "That's a lot of replies from this device. Please try again in a little while.",
   // Never shown: the stats page 404s rather than explaining itself.
   stats: "Too many attempts.",
+  // Never shown: the redirect happens either way, the click just is not counted.
+  footer: "Counted enough from here.",
 };
 
 export type Bucket = keyof typeof LIMITS;

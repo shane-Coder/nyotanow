@@ -42,11 +42,36 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         <Stat label="Invite page views" value={s.views} />
       </section>
 
-      <p className="mt-4 rounded-2xl bg-orange-50 p-4 text-sm text-orange-900">
-        <strong>The number that matters:</strong> &ldquo;From an invite&rdquo; counts hosts who landed here through
-        someone else&apos;s invite footer and then made their own. If that share keeps climbing, the loop is working
-        and you don&apos;t need ads.
-      </p>
+
+      <Panel title="The loop">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Step n={s.views} label="Invite pages opened" hint="Guests who saw an invite" />
+          <Step
+            n={s.footerClicks}
+            label="Tapped “create your own”"
+            hint={`${pct(s.footerClicks, s.views)}% of guests who opened one`}
+          />
+          <Step
+            n={s.invitesFromInvites}
+            label="Then made their own"
+            hint={
+              s.footerClicks === 0
+                ? "nothing to convert yet"
+                : `${pct(s.invitesFromInvites, s.footerClicks)}% of those who tapped`
+            }
+            highlight
+          />
+        </div>
+        <p className="mt-4 text-sm text-stone-600">
+          The two steps fail for different reasons. Few taps means guests never notice the footer, so the fix is the
+          footer. Plenty of taps and few invites means they noticed and weren&apos;t convinced, so the fix is the
+          landing page.
+        </p>
+        <p className="mt-2 text-xs text-stone-500">
+          Taps are counted on the server. The last step still relies on the guest finishing in the same browser they
+          tapped in, so it undercounts anyone who taps in WhatsApp and comes back later in Chrome.
+        </p>
+      </Panel>
 
       <Panel title="Last 14 days">
         <Chart daily={s.daily} />
@@ -188,6 +213,16 @@ function Stat({ label, value, hint, highlight }: { label: string; value: number;
       <div className="text-3xl font-bold tabular-nums text-stone-900">{value}</div>
       <div className="text-sm font-medium text-stone-600">{label}</div>
       {hint && <div className="mt-1 text-xs text-stone-500">{hint}</div>}
+    </div>
+  );
+}
+
+function Step({ n, label, hint, highlight }: { n: number; label: string; hint: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-2xl p-4 ring-1 ${highlight ? "bg-orange-50 ring-orange-200" : "bg-stone-50 ring-stone-200"}`}>
+      <div className="text-3xl font-bold tabular-nums text-stone-900">{n}</div>
+      <div className="text-sm font-medium text-stone-700">{label}</div>
+      <div className="mt-1 text-xs text-stone-500">{hint}</div>
     </div>
   );
 }
