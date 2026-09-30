@@ -11,6 +11,8 @@ const dataDir = mkdtempSync(join(tmpdir(), "nyotanow-test-"));
 process.env.PGLITE_DIR = dataDir;
 delete process.env.DATABASE_URL;
 
+const { sql } = await import("drizzle-orm");
+const { getDb } = await import(".");
 const {
   comingCount,
   findInvite,
@@ -309,5 +311,44 @@ describe("footer clicks", () => {
     const before = await getStats();
     await recordFooterClick("x".repeat(500));
     expect((await getStats()).footerClicks - before.footerClicks).toBe(1);
+  });
+});
+
+describe("the 7-day loop window", () => {
+  it("counts a view as an event, not only as a counter", async () => {
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    const before = await getStats();
+    await recordView(row.id);
+    await recordView(row.id);
+    const after = await getStats();
+    // Both records still move: the host's counter and the windowed event.
+    expect((await findInvite(slug))!.viewCount).toBe(2);
+    expect(after.loop7.views - before.loop7.views).toBe(2);
+    expect(after.views - before.views).toBe(2);
+  });
+
+  it("counts taps in the same window as views", async () => {
+    const before = await getStats();
+    await recordFooterClick("anything-abcde");
+    expect((await getStats()).loop7.taps - before.loop7.taps).toBe(1);
+  });
+
+  it("counts an invite that came from a footer in the window", async () => {
+    const before = await getStats();
+    await insertInvite(invite(), "invite");
+    await insertInvite(invite());
+    const after = await getStats();
+    expect(after.loop7.created - before.loop7.created).toBe(1);
+  });
+
+  it("drops a view when its invite is deleted, so the funnel cannot outlive its data", async () => {
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    await recordView(row.id);
+    const before = await getStats();
+    const db = await getDb();
+    await db.execute(sql`DELETE FROM invites WHERE id = ${row.id}`);
+    expect(before.loop7.views - (await getStats()).loop7.views).toBe(1);
   });
 });

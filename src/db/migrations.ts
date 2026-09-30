@@ -81,4 +81,20 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX footer_clicks_created_at_idx ON footer_clicks (created_at);
     `,
   },
+  {
+    name: "0005_invite_views",
+    sql: `
+      -- One row per opened invite. The counter on invites answers "how many
+      -- views has this invite had", which is all the host needs, but it cannot
+      -- answer "how many views this week" — and without that the loop funnel
+      -- was dividing a fortnight of views into a day of taps.
+      CREATE TABLE invite_views (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        invite_id  uuid REFERENCES invites(id) ON DELETE CASCADE,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX invite_views_created_at_idx ON invite_views (created_at);
+    `,
+  },
 ];

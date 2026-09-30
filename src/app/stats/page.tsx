@@ -43,22 +43,22 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
       </section>
 
 
-      <Panel title="The loop">
+      <Panel title="The loop — last 7 days">
         <div className="grid gap-3 sm:grid-cols-3">
-          <Step n={s.views} label="Invite pages opened" hint="Guests who saw an invite" />
+          <Step n={s.loop7.views} label="Invite pages opened" hint="Guests who saw an invite" />
           <Step
-            n={s.footerClicks}
+            n={s.loop7.taps}
             label="Tapped “create your own”"
-            hint={`${pct(s.footerClicks, s.views)}% of guests who opened one`}
+            hint={
+              s.loop7.views === 0
+                ? "no views yet this week"
+                : `${pct(s.loop7.taps, s.loop7.views)}% of guests who opened one`
+            }
           />
           <Step
-            n={s.invitesFromInvites}
+            n={s.loop7.created}
             label="Then made their own"
-            hint={
-              s.footerClicks === 0
-                ? "nothing to convert yet"
-                : `${pct(s.invitesFromInvites, s.footerClicks)}% of those who tapped`
-            }
+            hint={s.loop7.taps === 0 ? "nothing to convert yet" : `${pct(s.loop7.created, s.loop7.taps)}% of those who tapped`}
             highlight
           />
         </div>
@@ -68,8 +68,10 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
           landing page.
         </p>
         <p className="mt-2 text-xs text-stone-500">
-          Taps are counted on the server. The last step still relies on the guest finishing in the same browser they
-          tapped in, so it undercounts anyone who taps in WhatsApp and comes back later in Chrome.
+          All three counted over the same seven days, because comparing a fortnight of views with a day of taps gave a
+          rate that meant nothing. Views and taps are counted on the server; the last step still needs the guest to
+          finish in the browser they tapped in, so it undercounts anyone who taps in WhatsApp and returns later in
+          Chrome. Lifetime: {s.views} views, {s.footerClicks} taps, {s.invitesFromInvites} invites from an invite.
         </p>
       </Panel>
 

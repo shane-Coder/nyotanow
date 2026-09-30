@@ -93,12 +93,19 @@ export async function findInvite(slug: string): Promise<InviteRow | undefined> {
   return row;
 }
 
+/**
+ * Bumps the host's per-invite counter and writes a timestamped event, in one
+ * statement. The counter answers "how many views has this invite had"; the
+ * event answers "how many views this week", which the counter never could.
+ */
 export async function recordView(id: string): Promise<void> {
   const db = await getDb();
-  await db
-    .update(invites)
-    .set({ viewCount: sql`${invites.viewCount} + 1` })
-    .where(eq(invites.id, id));
+  await db.execute(sql`
+    WITH bump AS (
+      UPDATE invites SET view_count = view_count + 1 WHERE id = ${id}
+    )
+    INSERT INTO invite_views (invite_id) VALUES (${id})
+  `);
 }
 
 /** Inserts an RSVP, or overwrites the guest's earlier one when they change their answer. */
@@ -190,6 +197,11 @@ export type Stats = {
   invitesWithRsvps: number;
   /** Guests who tapped the invite footer. The step the old metric could not see. */
   footerClicks: number;
+  /**
+   * The loop over the last 7 days. Windowed because comparing lifetime views
+   * with a few days of taps produced a rate that meant nothing.
+   */
+  loop7: { views: number; taps: number; created: number };
   last7: number;
   prev7: number;
   daily: { day: string; invites: number; rsvps: number }[];
@@ -245,6 +257,17 @@ export async function getStats(): Promise<Stats> {
     await db.execute(sql`SELECT count(*)::int AS clicks FROM footer_clicks`),
   );
 
+  // All three counted over the same window, or the percentages lie.
+  const [loop] = rows<{ views: number; taps: number; created: number }>(
+    await db.execute(sql`
+      SELECT
+        (SELECT count(*)::int FROM invite_views  WHERE created_at >= now() - interval '7 days') AS views,
+        (SELECT count(*)::int FROM footer_clicks WHERE created_at >= now() - interval '7 days') AS taps,
+        (SELECT count(*)::int FROM invites
+          WHERE source = 'invite' AND created_at >= now() - interval '7 days')                  AS created
+    `),
+  );
+
   const byOccasion = rows<{ occasion: string; count: number }>(
     await db.execute(sql`SELECT occasion, count(*)::int AS count FROM invites GROUP BY occasion ORDER BY count DESC`),
   );
@@ -284,6 +307,11 @@ export async function getStats(): Promise<Stats> {
     guestsComing: Number(r?.guests_coming ?? 0),
     invitesWithRsvps: Number(r?.invites_with_rsvps ?? 0),
     footerClicks: Number(fc?.clicks ?? 0),
+    loop7: {
+      views: Number(loop?.views ?? 0),
+      taps: Number(loop?.taps ?? 0),
+      created: Number(loop?.created ?? 0),
+    },
     daily: daily.map((d) => ({ day: d.day, invites: Number(d.invites), rsvps: Number(d.rsvps) })),
     byOccasion: byOccasion.map((o) => ({ occasion: o.occasion, count: Number(o.count) })),
     byLang: byLang.map((l) => ({ lang: l.lang, count: Number(l.count) })),

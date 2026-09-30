@@ -40,6 +40,17 @@ export const rsvps = pgTable(
   (t) => [index("rsvps_invite_id_idx").on(t.inviteId)],
 );
 
+/** One row per opened invite, so views can be counted over a window. */
+export const inviteViews = pgTable(
+  "invite_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inviteId: uuid("invite_id").references(() => invites.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("invite_views_created_at_idx").on(t.createdAt)],
+);
+
 /** A guest tapping "create your own" on an invite footer. The top of the loop. */
 export const footerClicks = pgTable(
   "footer_clicks",
