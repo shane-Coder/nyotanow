@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Postgres](https://img.shields.io/badge/Postgres-Drizzle_ORM-4169E1?logo=postgresql&logoColor=white)](https://orm.drizzle.team)
 
-**[Try it live → nyotanow.vercel.app](https://nyotanow.vercel.app/?utm_source=github)**
+**[Try it live → nyotanow.in](https://nyotanow.in/?utm_source=github)**
 
 [How it was built, and what broke →](https://medium.com/@shivamrajomar/i-built-a-whatsapp-invite-app-for-indian-families-heres-what-broke-ac5b04eec575)
 
@@ -271,7 +271,7 @@ npx tsc --noEmit  # type check
 Runs on free tiers (Vercel + Neon). The live site uses the Vercel Marketplace Neon integration:
 
 1. Import the repo on Vercel and set `NEXT_PUBLIC_SITE_URL` to your production URL
-   (e.g. `https://nyotanow.vercel.app`).
+   (e.g. `https://nyotanow.in`).
 2. In Vercel → Storage, create a Neon database and connect it to the project. **Set the
    environment variable prefix to `DATABASE`** so it injects `DATABASE_URL`. The dialog
    defaults to `STORAGE`, which would create `STORAGE_URL`; the build would still pass, but
