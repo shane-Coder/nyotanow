@@ -1,6 +1,9 @@
+"use client";
+
 import { Logo } from "@/components/SiteChrome";
+import { parseJson, useStoredValue } from "@/lib/client-store";
 import { GUEST_UI } from "@/lib/i18n";
-import { ctaHref, type CtaPlacement } from "@/lib/invite";
+import { ctaHref, rsvpStorageKey, type CtaPlacement } from "@/lib/invite";
 import type { Lang } from "@/lib/themes";
 
 /**
@@ -17,12 +20,21 @@ import type { Lang } from "@/lib/themes";
  * and an ad shouting over a griha pravesh card would cost more trust than the
  * extra taps are worth.
  *
- * No "use client": plain markup, so it renders inside the server invite page
- * and inside the client RSVP form without two versions existing.
+ * Only ever one of the two is on screen. Shown together they were the same
+ * heading, the same sentence and the same button twice in a row, which reads
+ * as a bug rather than as an offer.
  */
 
 export function CreateOwnCta({ slug, lang, at }: { slug: string; lang: Lang; at: CtaPlacement }) {
   const t = GUEST_UI[lang];
+
+  // Hooks cannot be conditional, so this is read for both placements and only
+  // acted on by the footer. The server snapshot is null, so the page ships
+  // with the footer present — correct for every guest who has not replied,
+  // and corrected on hydration for the few who have, in the same pass that
+  // swaps the RSVP form for the answer they already gave.
+  const replied = parseJson<unknown>(useStoredValue(rsvpStorageKey(slug)), null) !== null;
+  if (at === "footer" && replied) return null;
 
   // A plain anchor, never <Link>: prefetching a counting route records taps
   // nobody made, which is how this number gets quietly poisoned.
@@ -39,7 +51,7 @@ export function CreateOwnCta({ slug, lang, at }: { slug: string; lang: Lang; at:
     return (
       <div className="mt-6 border-t border-stone-200 pt-5 text-center">
         <p className="text-base font-bold text-stone-800">{t.ctaHeading}</p>
-        <p className="mt-1 mb-4 text-sm text-stone-600">{t.ctaBody}</p>
+        <p className="mt-1 mb-4 text-pretty text-sm text-stone-600">{t.ctaBody}</p>
         {button}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-stone-400">
           {t.madeWith} <Logo className="text-base" />
@@ -54,7 +66,7 @@ export function CreateOwnCta({ slug, lang, at }: { slug: string; lang: Lang; at:
         {t.madeWith} <Logo className="text-base" />
       </p>
       <p className="mt-3 text-lg font-bold text-stone-800">{t.ctaHeading}</p>
-      <p className="mt-1 mb-4 text-sm text-stone-600">{t.ctaBody}</p>
+      <p className="mt-1 mb-4 text-pretty text-sm text-stone-600">{t.ctaBody}</p>
       {button}
     </section>
   );

@@ -13,6 +13,7 @@ import {
   inviteSchema,
   mapsUrl,
   rsvpSchema,
+  rsvpStorageKey,
   shareMessage,
   slugBase,
   timeNowInIST,
@@ -120,6 +121,17 @@ describe("the create-your-own link", () => {
     expect(ctaPlacement("")).toBe("");
     expect(ctaPlacement(null)).toBe("");
     expect(ctaPlacement(undefined)).toBe("");
+  });
+
+  it("gives the RSVP form and the footer the same storage key", () => {
+    // They drifted apart once and the guest got the whole block twice: the
+    // footer could not tell that the one above it was already showing.
+    expect(rsvpStorageKey("diwali-dinner-xyz12")).toBe("nyota:rsvp:diwali-dinner-xyz12");
+  });
+
+  it("keys each invite separately", () => {
+    // Otherwise replying to one invite would silence the footer on every other.
+    expect(rsvpStorageKey("a-abcde")).not.toBe(rsvpStorageKey("b-abcde"));
   });
 });
 

@@ -5,14 +5,14 @@ import { rsvpAction, type RsvpState } from "@/app/actions";
 import { CreateOwnCta } from "@/components/CreateOwnCta";
 import { parseJson, useStoredValue, writeStored } from "@/lib/client-store";
 import { GUEST_UI } from "@/lib/i18n";
-import type { RsvpStatus } from "@/lib/invite";
+import { rsvpStorageKey, type RsvpStatus } from "@/lib/invite";
 import type { Lang } from "@/lib/themes";
 
 type Saved = { id: string; name: string; status: RsvpStatus; guests?: number; note?: string };
 
 export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; accent: string }) {
   const t = GUEST_UI[lang];
-  const storageKey = `nyota:rsvp:${slug}`;
+  const storageKey = rsvpStorageKey(slug);
   const [status, setStatus] = useState<RsvpStatus>("yes");
   const [guests, setGuests] = useState(1);
   const [editing, setEditing] = useState(false);

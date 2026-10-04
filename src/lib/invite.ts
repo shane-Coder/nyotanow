@@ -148,6 +148,18 @@ export function ctaHref(slug: string, at: CtaPlacement): string {
   return `/r/invite?from=${encodeURIComponent(slug)}&at=${at}`;
 }
 
+/**
+ * Where a guest's own reply is remembered in their browser.
+ *
+ * Shared because two components read it: the RSVP form, to show a guest the
+ * answer they already gave, and the footer invitation, to get out of the way
+ * once the one above it is showing. Two spellings of this string would put
+ * the duplicated block back.
+ */
+export function rsvpStorageKey(slug: string): string {
+  return `nyota:rsvp:${slug}`;
+}
+
 export function mapsUrl(venue: string, address: string): string {
   const q = [venue, address].filter(Boolean).join(", ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
