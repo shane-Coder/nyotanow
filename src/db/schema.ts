@@ -33,6 +33,8 @@ export const invites = pgTable("invites", {
   placeLng: doublePrecision("place_lng"),
   message: text("message").notNull(),
   source: text("source").notNull().default(""),
+  /** Made by the operator rather than a real host. Kept out of the product numbers. */
+  mine: boolean("mine").notNull().default(false),
   isPremium: boolean("is_premium").notNull().default(false),
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -61,6 +63,7 @@ export const inviteViews = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     inviteId: uuid("invite_id").references(() => invites.id, { onDelete: "cascade" }),
+    mine: boolean("mine").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("invite_views_created_at_idx").on(t.createdAt)],
@@ -74,6 +77,7 @@ export const footerClicks = pgTable(
     slug: text("slug").notNull().default(""),
     /** Which invitation on the page was tapped: "footer", "rsvp", or "" for rows predating the split. */
     placement: text("placement").notNull().default(""),
+    mine: boolean("mine").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("footer_clicks_created_at_idx").on(t.createdAt)],

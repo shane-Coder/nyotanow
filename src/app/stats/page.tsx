@@ -10,6 +10,14 @@ export const metadata: Metadata = { title: "Stats", robots: { index: false, foll
 export const dynamic = "force-dynamic";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+// A burst of invites inside one evening reads very differently from the same
+// number spread across a day, and the date alone cannot tell them apart.
+const timeFmt = new Intl.DateTimeFormat("en-IN", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Kolkata",
+});
 
 const PLACEMENT_LABELS: Record<string, string> = {
   footer: "bottom of page",
@@ -39,7 +47,11 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
       </p>
 
       <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Invites created" value={s.invites} hint={`${s.last7} in last 7 days (${trend})`} />
+        <Stat
+          label="Invites created"
+          value={s.invites}
+          hint={`${s.last7} in last 7 days (${trend})${s.mine > 0 ? ` · ${s.mine} of yours not counted` : ""}`}
+        />
         <Stat
           label="From an invite"
           value={s.invitesFromInvites}
@@ -147,15 +159,32 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                       <a href={`/i/${i.slug}`} className="font-medium hover:underline">
                         {i.title}
                       </a>
+                      {i.mine && (
+                        <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">
+                          you
+                        </span>
+                      )}
                       {i.source === "invite" && (
                         <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
                           from invite
                         </span>
                       )}
                     </td>
-                    <td className="py-2 pr-3 text-stone-500">{dateFmt.format(i.createdAt)}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap text-stone-500">
+                      {dateFmt.format(i.createdAt)}
+                      <span className="ml-1.5 text-xs text-stone-400">{timeFmt.format(i.createdAt)}</span>
+                    </td>
                     <td className="py-2 text-right tabular-nums">{i.views}</td>
-                    <td className="py-2 text-right tabular-nums">{i.rsvps}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {i.rsvps}
+                      {i.rsvps > 0 && (
+                        <span className="ml-1.5 text-xs font-normal text-stone-400">
+                          {[i.yes && `${i.yes} yes`, i.maybe && `${i.maybe} maybe`, i.no && `${i.no} no`]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

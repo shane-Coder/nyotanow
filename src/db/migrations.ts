@@ -127,4 +127,24 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE invites ADD COLUMN place_lng double precision;
     `,
   },
+  {
+    name: "0008_mine",
+    sql: `
+      -- Rows made by the person who runs this, rather than by a real host or
+      -- guest. Every reading of the funnel so far has had to guess which was
+      -- which from the titles, and got it wrong repeatedly: a tap counted as
+      -- a stranger's was his own, an invite "from an invite" was a test.
+      --
+      -- All three legs need the flag or the percentages still lie. Excluding
+      -- his invites while still counting his views would quietly make the
+      -- conversion rate worse rather than more honest.
+      --
+      -- Defaults to false, so everything already in the table reads as
+      -- somebody else's. That is wrong for the handful he made before today
+      -- and cannot be fixed by guessing; it is corrected by hand or not at all.
+      ALTER TABLE invites       ADD COLUMN mine boolean NOT NULL DEFAULT false;
+      ALTER TABLE footer_clicks ADD COLUMN mine boolean NOT NULL DEFAULT false;
+      ALTER TABLE invite_views  ADD COLUMN mine boolean NOT NULL DEFAULT false;
+    `,
+  },
 ];

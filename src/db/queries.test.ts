@@ -353,6 +353,76 @@ describe("footer clicks", () => {
   });
 });
 
+describe("the operator's own rows", () => {
+  // Every reading of this funnel has had to guess which rows were his from
+  // their titles, and got it wrong in both directions. The flag replaces the
+  // guessing; these tests are what make it worth trusting.
+
+  it("keeps his invites out of the headline count", async () => {
+    const before = await getStats();
+    await insertInvite(invite({ title: "Real host" }));
+    await insertInvite(invite({ title: "My own test" }), "", true);
+    const after = await getStats();
+    expect(after.invites - before.invites).toBe(1);
+    expect(after.mine - before.mine).toBe(1);
+  });
+
+  it("keeps his views out of the loop denominator", async () => {
+    // Counting his views while dropping his invites would make the rate look
+    // worse than it is, which is a different kind of lie.
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    const before = await getStats();
+    await recordView(row.id);
+    await recordView(row.id, true);
+    const after = await getStats();
+    expect(after.loop7.views - before.loop7.views).toBe(1);
+    // The host's own counter still moves for both: that number is theirs.
+    expect((await findInvite(slug))!.viewCount).toBe(2);
+  });
+
+  it("keeps his taps out of the loop", async () => {
+    const before = await getStats();
+    await recordFooterClick("a-abcde", "rsvp");
+    await recordFooterClick("a-abcde", "rsvp", true);
+    const after = await getStats();
+    expect(after.loop7.taps - before.loop7.taps).toBe(1);
+    expect(after.footerClicks - before.footerClicks).toBe(1);
+  });
+
+  it("keeps his taps out of the placement split too", async () => {
+    const taps = (st: Awaited<ReturnType<typeof getStats>>, p: string) =>
+      st.tapsByPlacement.find((x) => x.placement === p)?.taps ?? 0;
+    const before = await getStats();
+    await recordFooterClick("b-abcde", "footer");
+    await recordFooterClick("b-abcde", "footer", true);
+    const after = await getStats();
+    expect(taps(after, "footer") - taps(before, "footer")).toBe(1);
+  });
+
+  it("keeps his from-an-invite conversions out of the loop", async () => {
+    // The exact number we misread four times.
+    const before = await getStats();
+    await insertInvite(invite(), "invite");
+    await insertInvite(invite(), "invite", true);
+    const after = await getStats();
+    expect(after.loop7.created - before.loop7.created).toBe(1);
+    expect(after.invitesFromInvites - before.invitesFromInvites).toBe(1);
+  });
+
+  it("still shows them in the recent list, flagged", async () => {
+    // He needs to see his own rows; he just needs them not counted.
+    const { slug } = await insertInvite(invite({ title: "Flagged one" }), "", true);
+    const row = (await getStats()).recent.find((r) => r.slug === slug)!;
+    expect(row.mine).toBe(true);
+  });
+
+  it("defaults to not-mine, so a missed cookie overcounts rather than hides", async () => {
+    const { slug } = await insertInvite(invite());
+    expect((await getStats()).recent.find((r) => r.slug === slug)!.mine).toBe(false);
+  });
+});
+
 describe("the 7-day loop window", () => {
   it("counts a view as an event, not only as a counter", async () => {
     const { slug } = await insertInvite(invite());
@@ -371,6 +441,23 @@ describe("the 7-day loop window", () => {
     const before = await getStats();
     await recordFooterClick("anything-abcde");
     expect((await getStats()).loop7.taps - before.loop7.taps).toBe(1);
+  });
+
+  it("breaks RSVPs down by answer without naming anyone", async () => {
+    // Counts are enough to read the page; the guest list belongs to the host.
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Chandrabhushan", status: "yes", guests: 2, note: "bringing sweets" });
+    await saveRsvp(row.id, { name: "Meenakshi", status: "yes", guests: 1, note: "" });
+    await saveRsvp(row.id, { name: "Rukmini", status: "maybe", guests: 1, note: "" });
+    await saveRsvp(row.id, { name: "Vaidyanathan", status: "no", guests: 1, note: "" });
+    const r = (await getStats()).recent.find((x) => x.slug === slug)!;
+    expect(r.rsvps).toBe(4);
+    expect([r.yes, r.maybe, r.no]).toEqual([2, 1, 1]);
+    const serialised = JSON.stringify(r);
+    for (const leaked of ["Chandrabhushan", "Meenakshi", "Rukmini", "Vaidyanathan", "bringing sweets"]) {
+      expect(serialised, leaked).not.toContain(leaked);
+    }
   });
 
   it("counts an invite that came from a footer in the window", async () => {

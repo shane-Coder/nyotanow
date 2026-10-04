@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
 import { inviteSchema, isPastEvent, rsvpSchema, type RsvpStatus } from "@/lib/invite";
+import { viewerIsOwner } from "@/lib/owner";
 import { rateLimited } from "@/lib/rate-limit";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> } | undefined;
@@ -58,10 +59,12 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
 
   // Only a fixed label, never arbitrary text from the form.
   const source = formData.get("source") === "invite" ? "invite" : "";
+  // Kept out of the product numbers rather than guessed at from the title later.
+  const mine = await viewerIsOwner();
 
   let created: { slug: string; key: string };
   try {
-    created = await insertInvite(parsed.data, source);
+    created = await insertInvite(parsed.data, source, mine);
   } catch (err) {
     console.error("createInvite failed", err);
     return { error: "Sorry, we couldn't save your invite. Please try again in a moment." };

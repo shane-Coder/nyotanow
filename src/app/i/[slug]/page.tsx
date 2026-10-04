@@ -11,6 +11,7 @@ import { comingCount, findInvite, recordView, toInviteData } from "@/db/queries"
 import { GUEST_UI } from "@/lib/i18n";
 import { formatEventDate, formatEventTime, googleCalendarUrl, mapsUrl, shareMessage, siteUrl, todayInIST } from "@/lib/invite";
 import { withoutMapLink } from "@/lib/map-link";
+import { viewerIsOwner } from "@/lib/owner";
 import { getPalette } from "@/lib/themes";
 
 const loadInvite = cache(findInvite);
@@ -51,7 +52,10 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
   const actionColor = palette.dark ? palette.bg2 : palette.accent;
   const pageTint = palette.dark ? `${palette.accent}40` : palette.bg2;
 
-  after(() => recordView(row.id));
+  // Read before the response is sent: after() runs once the request context
+  // is gone, so the cookie has to be looked at here.
+  const mine = await viewerIsOwner();
+  after(() => recordView(row.id, mine));
 
   const btn =
     "flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-3.5 text-sm font-semibold text-stone-800 shadow-sm ring-1 ring-black/5 transition hover:bg-stone-50";

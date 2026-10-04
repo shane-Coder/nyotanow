@@ -10,6 +10,16 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 export const STATS_COOKIE = "nyota_stats";
 
+/**
+ * Marks a device as the operator's own, so what he does here stops being
+ * counted as a stranger's.
+ *
+ * Separate from STATS_COOKIE only because that one is scoped to /stats and so
+ * is never sent to the pages this needs to reach. Same value, same lifetime,
+ * same rotation: changing STATS_KEY invalidates both at once.
+ */
+export const OWNER_COOKIE = "nyota_mine";
+
 function sha256(value: string): Buffer {
   return createHash("sha256").update(value).digest();
 }

@@ -66,7 +66,7 @@ export function toInviteData(row: InviteRow): InviteData {
   } as InviteData;
 }
 
-export async function insertInvite(data: InviteData, source = ""): Promise<{ slug: string; key: string }> {
+export async function insertInvite(data: InviteData, source = "", mine = false): Promise<{ slug: string; key: string }> {
   const db = await getDb();
   const key = secret();
   const base = slugBase(data.title, data.occasion);
@@ -75,7 +75,7 @@ export async function insertInvite(data: InviteData, source = ""): Promise<{ slu
     const slug = `${base}-${suffix()}`;
     const inserted = await db
       .insert(invites)
-      .values({ ...toColumns(data), slug, source, editKeyHash: hashKey(key) })
+      .values({ ...toColumns(data), slug, source, mine, editKeyHash: hashKey(key) })
       .onConflictDoNothing({ target: invites.slug })
       .returning({ slug: invites.slug });
     if (inserted.length) return { slug, key };
@@ -102,13 +102,13 @@ export async function findInvite(slug: string): Promise<InviteRow | undefined> {
  * statement. The counter answers "how many views has this invite had"; the
  * event answers "how many views this week", which the counter never could.
  */
-export async function recordView(id: string): Promise<void> {
+export async function recordView(id: string, mine = false): Promise<void> {
   const db = await getDb();
   await db.execute(sql`
     WITH bump AS (
       UPDATE invites SET view_count = view_count + 1 WHERE id = ${id}
     )
-    INSERT INTO invite_views (invite_id) VALUES (${id})
+    INSERT INTO invite_views (invite_id, mine) VALUES (${id}, ${mine})
   `);
 }
 
@@ -150,9 +150,9 @@ export async function comingCount(inviteId: string): Promise<number> {
 /* ----------------------------- the loop ----------------------------- */
 
 /** Records a guest tapping "create your own". Never blocks the redirect. */
-export async function recordFooterClick(slug: string, placement = ""): Promise<void> {
+export async function recordFooterClick(slug: string, placement = "", mine = false): Promise<void> {
   const db = await getDb();
-  await db.insert(footerClicks).values({ slug: slug.slice(0, 80), placement });
+  await db.insert(footerClicks).values({ slug: slug.slice(0, 80), placement, mine });
 }
 
 /* --------------------------- rate limiting --------------------------- */
@@ -194,6 +194,8 @@ export async function pruneRateLimits(): Promise<void> {
 
 export type Stats = {
   invites: number;
+  /** The operator's own, counted apart rather than mixed into everything above. */
+  mine: number;
   invitesFromInvites: number;
   rsvps: number;
   guestsComing: number;
@@ -218,7 +220,19 @@ export type Stats = {
   byOccasion: { occasion: string; count: number }[];
   byLang: { lang: string; count: number }[];
   byStatus: { status: string; count: number }[];
-  recent: { slug: string; title: string; occasion: string; source: string; views: number; rsvps: number; createdAt: Date }[];
+  recent: {
+    slug: string;
+    title: string;
+    occasion: string;
+    source: string;
+    mine: boolean;
+    views: number;
+    rsvps: number;
+    yes: number;
+    maybe: number;
+    no: number;
+    createdAt: Date;
+  }[];
 };
 
 /** Everything the private /stats page shows, in one round trip per section. */
@@ -231,14 +245,17 @@ export async function getStats(): Promise<Stats> {
     views: number;
     last7: number;
     prev7: number;
+    mine: number;
   }>(
     await db.execute(sql`
-      SELECT count(*)::int AS invites,
-             count(*) FILTER (WHERE source = 'invite')::int AS invites_from_invites,
-             coalesce(sum(view_count), 0)::int AS views,
-             count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS last7,
+      SELECT count(*) FILTER (WHERE NOT mine)::int AS invites,
+             count(*) FILTER (WHERE source = 'invite' AND NOT mine)::int AS invites_from_invites,
+             coalesce(sum(view_count) FILTER (WHERE NOT mine), 0)::int AS views,
+             count(*) FILTER (WHERE created_at >= now() - interval '7 days' AND NOT mine)::int AS last7,
              count(*) FILTER (WHERE created_at >= now() - interval '14 days'
-                                AND created_at <  now() - interval '7 days')::int AS prev7
+                                AND created_at <  now() - interval '7 days'
+                                AND NOT mine)::int AS prev7,
+             count(*) FILTER (WHERE mine)::int AS mine
       FROM invites
     `),
   );
@@ -264,17 +281,17 @@ export async function getStats(): Promise<Stats> {
   );
 
   const [fc] = rows<{ clicks: number }>(
-    await db.execute(sql`SELECT count(*)::int AS clicks FROM footer_clicks`),
+    await db.execute(sql`SELECT count(*) FILTER (WHERE NOT mine)::int AS clicks FROM footer_clicks`),
   );
 
   // All three counted over the same window, or the percentages lie.
   const [loop] = rows<{ views: number; taps: number; created: number }>(
     await db.execute(sql`
       SELECT
-        (SELECT count(*)::int FROM invite_views  WHERE created_at >= now() - interval '7 days') AS views,
-        (SELECT count(*)::int FROM footer_clicks WHERE created_at >= now() - interval '7 days') AS taps,
+        (SELECT count(*)::int FROM invite_views  WHERE created_at >= now() - interval '7 days' AND NOT mine) AS views,
+        (SELECT count(*)::int FROM footer_clicks WHERE created_at >= now() - interval '7 days' AND NOT mine) AS taps,
         (SELECT count(*)::int FROM invites
-          WHERE source = 'invite' AND created_at >= now() - interval '7 days')                  AS created
+          WHERE source = 'invite' AND created_at >= now() - interval '7 days' AND NOT mine)              AS created
     `),
   );
 
@@ -284,7 +301,7 @@ export async function getStats(): Promise<Stats> {
     await db.execute(sql`
       SELECT placement, count(*)::int AS taps
       FROM footer_clicks
-      WHERE created_at >= now() - interval '7 days'
+      WHERE created_at >= now() - interval '7 days' AND NOT mine
       GROUP BY placement
       ORDER BY taps DESC
     `),
@@ -305,13 +322,22 @@ export async function getStats(): Promise<Stats> {
     title: string;
     occasion: string;
     source: string;
+    mine: boolean;
     views: number;
     rsvps: number;
+    yes: number;
+    maybe: number;
+    no: number;
     created_at: string | Date;
   }>(
     await db.execute(sql`
-      SELECT i.slug, i.title, i.occasion, i.source, i.view_count::int AS views,
+      SELECT i.slug, i.title, i.occasion, i.source, i.mine, i.view_count::int AS views,
              (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id) AS rsvps,
+             -- Counts, never names. The guest list belongs to the host; this
+             -- page only needs to know whether anyone answered and how.
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'yes')   AS yes,
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'maybe') AS maybe,
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'no')    AS no,
              i.created_at
       FROM invites i
       ORDER BY i.created_at DESC
@@ -328,6 +354,7 @@ export async function getStats(): Promise<Stats> {
     rsvps: Number(r?.rsvps ?? 0),
     guestsComing: Number(r?.guests_coming ?? 0),
     invitesWithRsvps: Number(r?.invites_with_rsvps ?? 0),
+    mine: Number(totals?.mine ?? 0),
     footerClicks: Number(fc?.clicks ?? 0),
     tapsByPlacement: tapsByPlacement.map((p) => ({ placement: p.placement, taps: Number(p.taps) })),
     loop7: {
@@ -344,8 +371,12 @@ export async function getStats(): Promise<Stats> {
       title: x.title,
       occasion: x.occasion,
       source: x.source,
+      mine: Boolean(x.mine),
       views: Number(x.views),
       rsvps: Number(x.rsvps),
+      yes: Number(x.yes),
+      maybe: Number(x.maybe),
+      no: Number(x.no),
       createdAt: new Date(x.created_at),
     })),
   };

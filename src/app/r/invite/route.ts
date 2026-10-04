@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { recordFooterClick } from "@/db/queries";
 import { ctaPlacement } from "@/lib/invite";
+import { viewerIsOwner } from "@/lib/owner";
 import { rateLimited } from "@/lib/rate-limit";
 
 /**
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
   try {
     // Counting must never be the reason a guest fails to reach the homepage.
-    if (!(await rateLimited("footer"))) await recordFooterClick(from, at);
+    if (!(await rateLimited("footer"))) await recordFooterClick(from, at, await viewerIsOwner());
   } catch (err) {
     console.error("footer click not recorded", err);
   }
