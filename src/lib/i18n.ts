@@ -25,7 +25,9 @@ export const GUEST_UI = {
     today: "It's today! 🎉",
     over: "This event has ended. Thanks for being part of it 💛",
     madeWith: "Made with",
-    createOwn: "Create your own invite. It's free →",
+    ctaHeading: "Hosting something yourself?",
+    ctaBody: "Make an invite like this in a minute. Free, no app.",
+    ctaButton: "Make my invite",
   },
   hi: {
     willYouCome: "क्या आप आएँगे?",
@@ -50,6 +52,8 @@ export const GUEST_UI = {
     today: "आज का दिन है! 🎉",
     over: "यह कार्यक्रम संपन्न हो चुका है। शामिल होने के लिए धन्यवाद 💛",
     madeWith: "बनाया गया",
-    createOwn: "अपना न्योता मुफ़्त में बनाएँ →",
+    ctaHeading: "अपना कोई आयोजन है?",
+    ctaBody: "ऐसा न्योता एक मिनट में बनाइए। मुफ़्त, कोई ऐप नहीं।",
+    ctaButton: "मेरा न्योता बनाएँ",
   },
 } satisfies Record<Lang, unknown>;

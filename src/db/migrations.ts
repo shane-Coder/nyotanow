@@ -97,4 +97,18 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX invite_views_created_at_idx ON invite_views (created_at);
     `,
   },
+  {
+    name: "0006_footer_click_placement",
+    sql: `
+      -- Where on the invite page the tap came from. The quiet strip at the
+      -- bottom and the moment just after a guest replies are very different
+      -- offers, and with one number for both there is no way to learn which
+      -- one guests actually respond to.
+      --
+      -- Existing rows keep '' rather than being guessed into a bucket: every
+      -- tap recorded before this migration came from the old single footer,
+      -- and labelling them as such would overstate how well it did.
+      ALTER TABLE footer_clicks ADD COLUMN placement text NOT NULL DEFAULT '';
+    `,
+  },
 ];

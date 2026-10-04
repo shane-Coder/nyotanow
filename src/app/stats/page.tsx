@@ -11,6 +11,14 @@ export const dynamic = "force-dynamic";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
+const PLACEMENT_LABELS: Record<string, string> = {
+  footer: "bottom of page",
+  rsvp: "after replying",
+  // Taps recorded before the two were told apart. Kept visible rather than
+  // folded into "bottom of page", which would flatter whichever one wins.
+  "": "before the split",
+};
+
 export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
   // An old ?key= link still works: it is exchanged for a cookie and the key
   // disappears from the address bar.
@@ -67,6 +75,16 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
           footer. Plenty of taps and few invites means they noticed and weren&apos;t convinced, so the fix is the
           landing page.
         </p>
+
+        {s.tapsByPlacement.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {s.tapsByPlacement.map((p) => (
+              <span key={p.placement || "legacy"} className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700">
+                {PLACEMENT_LABELS[p.placement] ?? p.placement}: <strong className="tabular-nums">{p.taps}</strong>
+              </span>
+            ))}
+          </div>
+        )}
         <p className="mt-2 text-xs text-stone-500">
           All three counted over the same seven days, because comparing a fortnight of views with a day of taps gave a
           rate that meant nothing. Views and taps are counted on the server; the last step still needs the guest to

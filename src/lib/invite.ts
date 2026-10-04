@@ -127,6 +127,27 @@ export function eventDayParts(date: string, lang: Lang): { day: string; month: s
   };
 }
 
+/**
+ * Where the "create your own" invitation can appear on an invite page.
+ *
+ * "footer" is the standing one at the bottom; "rsvp" is the one shown to a
+ * guest who has just replied. They are counted apart because a guest who has
+ * only scrolled and a guest who has just committed to attending are not the
+ * same person, and one number for both hides which offer works.
+ */
+export const CTA_PLACEMENTS = ["footer", "rsvp"] as const;
+export type CtaPlacement = (typeof CTA_PLACEMENTS)[number];
+
+/** The placement named in a redirect's `?at=`, or "" when it is absent or junk. */
+export function ctaPlacement(given: string | undefined | null): CtaPlacement | "" {
+  return CTA_PLACEMENTS.includes(given as CtaPlacement) ? (given as CtaPlacement) : "";
+}
+
+/** The counting link a "create your own" invitation points at. */
+export function ctaHref(slug: string, at: CtaPlacement): string {
+  return `/r/invite?from=${encodeURIComponent(slug)}&at=${at}`;
+}
+
 export function mapsUrl(venue: string, address: string): string {
   const q = [venue, address].filter(Boolean).join(", ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;

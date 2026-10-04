@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { rsvpAction, type RsvpState } from "@/app/actions";
+import { CreateOwnCta } from "@/components/CreateOwnCta";
 import { parseJson, useStoredValue, writeStored } from "@/lib/client-store";
 import { GUEST_UI } from "@/lib/i18n";
 import type { RsvpStatus } from "@/lib/invite";
@@ -53,6 +54,9 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
         >
           {t.changeAnswer}
         </button>
+        {/* Only once they have replied. Before that the page has exactly one
+            job, and competing with it would cost RSVPs to win taps. */}
+        <CreateOwnCta slug={slug} lang={lang} at="rsvp" />
       </div>
     );
   }

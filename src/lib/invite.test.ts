@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   clampToFuture,
+  ctaHref,
+  ctaPlacement,
   eventDayParts,
   isPastEvent,
   isPastEventAt,
@@ -89,6 +91,35 @@ describe("slugBase", () => {
     const slug = slugBase("A very long birthday party title that runs on and on", "birthday");
     expect(slug.length).toBeLessThanOrEqual(40);
     expect(slug.endsWith("-")).toBe(false);
+  });
+});
+
+describe("the create-your-own link", () => {
+  it("names its placement so the two can be told apart", () => {
+    const url = new URL(ctaHref("diwali-dinner-xyz12", "rsvp"), "https://nyotanow.in");
+    expect(url.pathname).toBe("/r/invite");
+    expect(url.searchParams.get("from")).toBe("diwali-dinner-xyz12");
+    expect(url.searchParams.get("at")).toBe("rsvp");
+  });
+
+  it("escapes a slug rather than letting it add parameters", () => {
+    const url = new URL(ctaHref("a&at=rsvp", "footer"), "https://nyotanow.in");
+    expect(url.searchParams.get("from")).toBe("a&at=rsvp");
+    expect(url.searchParams.get("at")).toBe("footer");
+  });
+
+  it("accepts the placements that exist", () => {
+    expect(ctaPlacement("footer")).toBe("footer");
+    expect(ctaPlacement("rsvp")).toBe("rsvp");
+  });
+
+  it("refuses anything else instead of inventing a bucket", () => {
+    // A hand-edited ?at= must not show up on the stats page as a real placement.
+    expect(ctaPlacement("hero")).toBe("");
+    expect(ctaPlacement("Footer")).toBe("");
+    expect(ctaPlacement("")).toBe("");
+    expect(ctaPlacement(null)).toBe("");
+    expect(ctaPlacement(undefined)).toBe("");
   });
 });
 

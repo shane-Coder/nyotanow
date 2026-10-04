@@ -312,6 +312,43 @@ describe("footer clicks", () => {
     await recordFooterClick("x".repeat(500));
     expect((await getStats()).footerClicks - before.footerClicks).toBe(1);
   });
+
+  const taps = (s: Awaited<ReturnType<typeof getStats>>, placement: string) =>
+    s.tapsByPlacement.find((p) => p.placement === placement)?.taps ?? 0;
+
+  it("keeps the two placements apart", async () => {
+    // The point of the split: one number for both cannot say which of the two
+    // invitations a guest actually responded to.
+    const before = await getStats();
+    await recordFooterClick("a-abcde", "footer");
+    await recordFooterClick("a-abcde", "rsvp");
+    await recordFooterClick("a-abcde", "rsvp");
+    const after = await getStats();
+    expect(taps(after, "footer") - taps(before, "footer")).toBe(1);
+    expect(taps(after, "rsvp") - taps(before, "rsvp")).toBe(2);
+  });
+
+  it("still counts an unlabelled tap, in its own bucket", async () => {
+    // Rows written before the placement column existed, and anything that
+    // arrives without a recognised ?at=. They must not inflate a real one.
+    const before = await getStats();
+    await recordFooterClick("b-abcde");
+    const after = await getStats();
+    expect(taps(after, "") - taps(before, "")).toBe(1);
+    expect(taps(after, "footer")).toBe(taps(before, "footer"));
+    expect(after.footerClicks - before.footerClicks).toBe(1);
+  });
+
+  it("counts every placement toward the same loop total", async () => {
+    const before = await getStats();
+    await recordFooterClick("c-abcde", "footer");
+    await recordFooterClick("c-abcde", "rsvp");
+    const after = await getStats();
+    expect(after.loop7.taps - before.loop7.taps).toBe(2);
+    // Otherwise the breakdown and the headline number would disagree.
+    const sum = (s: typeof after) => s.tapsByPlacement.reduce((n, p) => n + p.taps, 0);
+    expect(sum(after)).toBe(after.loop7.taps);
+  });
 });
 
 describe("the 7-day loop window", () => {

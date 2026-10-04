@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { cache } from "react";
 import { Countdown } from "@/components/Countdown";
+import { CreateOwnCta } from "@/components/CreateOwnCta";
 import { InviteCard } from "@/components/InviteCard";
 import { RsvpForm } from "@/components/RsvpForm";
 import { NativeShareButton, SaveImageButton } from "@/components/ShareActions";
-import { Logo } from "@/components/SiteChrome";
 import { comingCount, findInvite, recordView, toInviteData } from "@/db/queries";
 import { GUEST_UI } from "@/lib/i18n";
 import { formatEventDate, formatEventTime, googleCalendarUrl, mapsUrl, shareMessage, siteUrl, todayInIST } from "@/lib/invite";
@@ -100,17 +100,7 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
           </section>
         )}
 
-        {/* A plain anchor, not <Link>: prefetching a counting route would
-            record clicks nobody made. */}
-        <a
-          href={`/r/invite?from=${encodeURIComponent(slug)}`}
-          className="mt-8 flex flex-col items-center gap-1 rounded-3xl bg-white/70 px-4 py-5 text-center ring-1 ring-black/5 transition hover:bg-white"
-        >
-          <span className="flex items-center gap-2 text-xs text-stone-500">
-            {t.madeWith} <Logo className="text-lg" />
-          </span>
-          <span className="text-sm font-semibold text-brand">{t.createOwn}</span>
-        </a>
+        <CreateOwnCta slug={slug} lang={invite.lang} at="footer" />
       </main>
     </div>
   );

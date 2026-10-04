@@ -57,6 +57,8 @@ export const footerClicks = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     slug: text("slug").notNull().default(""),
+    /** Which invitation on the page was tapped: "footer", "rsvp", or "" for rows predating the split. */
+    placement: text("placement").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("footer_clicks_created_at_idx").on(t.createdAt)],

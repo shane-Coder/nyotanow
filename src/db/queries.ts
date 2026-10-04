@@ -146,9 +146,9 @@ export async function comingCount(inviteId: string): Promise<number> {
 /* ----------------------------- the loop ----------------------------- */
 
 /** Records a guest tapping "create your own". Never blocks the redirect. */
-export async function recordFooterClick(slug: string): Promise<void> {
+export async function recordFooterClick(slug: string, placement = ""): Promise<void> {
   const db = await getDb();
-  await db.insert(footerClicks).values({ slug: slug.slice(0, 80) });
+  await db.insert(footerClicks).values({ slug: slug.slice(0, 80), placement });
 }
 
 /* --------------------------- rate limiting --------------------------- */
@@ -197,6 +197,12 @@ export type Stats = {
   invitesWithRsvps: number;
   /** Guests who tapped the invite footer. The step the old metric could not see. */
   footerClicks: number;
+  /**
+   * The same taps split by where on the page they came from, over the same 7
+   * days as `loop7`. "" is every tap recorded before the two placements
+   * existed, so it is shown as the old single footer rather than merged in.
+   */
+  tapsByPlacement: { placement: string; taps: number }[];
   /**
    * The loop over the last 7 days. Windowed because comparing lifetime views
    * with a few days of taps produced a rate that meant nothing.
@@ -268,6 +274,18 @@ export async function getStats(): Promise<Stats> {
     `),
   );
 
+  // Same 7-day window as loop7, so this breaks that one number down rather
+  // than sitting beside it as a lifetime total that cannot be compared.
+  const tapsByPlacement = rows<{ placement: string; taps: number }>(
+    await db.execute(sql`
+      SELECT placement, count(*)::int AS taps
+      FROM footer_clicks
+      WHERE created_at >= now() - interval '7 days'
+      GROUP BY placement
+      ORDER BY taps DESC
+    `),
+  );
+
   const byOccasion = rows<{ occasion: string; count: number }>(
     await db.execute(sql`SELECT occasion, count(*)::int AS count FROM invites GROUP BY occasion ORDER BY count DESC`),
   );
@@ -307,6 +325,7 @@ export async function getStats(): Promise<Stats> {
     guestsComing: Number(r?.guests_coming ?? 0),
     invitesWithRsvps: Number(r?.invites_with_rsvps ?? 0),
     footerClicks: Number(fc?.clicks ?? 0),
+    tapsByPlacement: tapsByPlacement.map((p) => ({ placement: p.placement, taps: Number(p.taps) })),
     loop7: {
       views: Number(loop?.views ?? 0),
       taps: Number(loop?.taps ?? 0),

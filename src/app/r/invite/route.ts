@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordFooterClick } from "@/db/queries";
+import { ctaPlacement } from "@/lib/invite";
 import { rateLimited } from "@/lib/rate-limit";
 
 /**
@@ -18,11 +19,15 @@ import { rateLimited } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const from = new URL(request.url).searchParams.get("from") ?? "";
+  const params = new URL(request.url).searchParams;
+  const from = params.get("from") ?? "";
+  // Anything unrecognised is stored as "", so a hand-edited ?at= cannot invent
+  // a placement that the stats page would then report as real.
+  const at = ctaPlacement(params.get("at"));
 
   try {
     // Counting must never be the reason a guest fails to reach the homepage.
-    if (!(await rateLimited("footer"))) await recordFooterClick(from);
+    if (!(await rateLimited("footer"))) await recordFooterClick(from, at);
   } catch (err) {
     console.error("footer click not recorded", err);
   }
