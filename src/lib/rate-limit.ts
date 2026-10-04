@@ -35,6 +35,48 @@ const LIMITS = {
   ],
 } satisfies Record<string, { seconds: number; max: number }[]>;
 
+/**
+ * Caps that apply to the whole site at once rather than to one caller.
+ *
+ * The per-IP limits above cannot see a distributed attack. A hundred
+ * addresses each staying politely under 600 a day is 60,000 calls, and every
+ * one of them passes the per-caller check. That is fine for the buckets whose
+ * worst case is junk rows, and not fine for the one whose worst case is a
+ * bill.
+ *
+ * 2,000 a day is roughly 60,000 a month against a free allowance of 100,000,
+ * and about 500 invites a day at the four-or-so calls each one costs — far
+ * beyond anything this site has seen. Raise it the day that stops being true;
+ * being told there are no suggestions is a small thing, and far better than
+ * the alternative.
+ */
+const GLOBAL_LIMITS = {
+  places: [{ seconds: 60 * 60 * 24, max: 2000 }],
+} satisfies Partial<Record<Bucket, { seconds: number; max: number }[]>>;
+
+export type GlobalBucket = keyof typeof GLOBAL_LIMITS;
+
+/**
+ * True when the site as a whole has had enough of this for today.
+ *
+ * Note this fails *closed*, unlike everything else in this file. The others
+ * protect against nuisance, so a limiter that is down must not take the site
+ * with it. This one protects against spending money, and the failure it
+ * causes is a venue box without suggestions — which is what the box was until
+ * recently and is no loss at all.
+ */
+export async function overGlobalCap(bucket: GlobalBucket): Promise<boolean> {
+  try {
+    for (const { seconds, max } of GLOBAL_LIMITS[bucket]) {
+      if ((await hitRateLimit(`${bucket}:all`, "all", seconds)) > max) return true;
+    }
+    return false;
+  } catch (err) {
+    console.error("global cap check failed", err);
+    return true;
+  }
+}
+
 const MESSAGES: Record<Bucket, string> = {
   create: "You've created a lot of invites just now. Please try again in a little while.",
   rsvp: "That's a lot of replies from this device. Please try again in a little while.",

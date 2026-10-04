@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MIN_QUERY, searchPlaces } from "@/lib/places";
-import { rateLimited } from "@/lib/rate-limit";
+import { overGlobalCap, rateLimited } from "@/lib/rate-limit";
 
 /**
  * Venue suggestions for the create form.
@@ -24,7 +24,10 @@ export async function GET(request: Request) {
   // have sent anyway, cannot spend a real host's allowance.
   if (q.trim().length < MIN_QUERY) return NextResponse.json([]);
 
+  // Per-caller first, so requests we are already refusing do not eat into the
+  // allowance the rest of the site shares.
   if (await rateLimited("places")) return NextResponse.json([]);
+  if (await overGlobalCap("places")) return NextResponse.json([]);
 
   const suggestions = await searchPlaces(q);
   return NextResponse.json(suggestions, {
