@@ -137,6 +137,31 @@ describe("the create-your-own link", () => {
   });
 });
 
+describe("mapsUrl when the host pasted a map link", () => {
+  it("sends the guest to the link instead of searching for it", () => {
+    // What it did before: searched Google for the literal string
+    // "China, https://share.google/..." and found nothing at all.
+    expect(mapsUrl("China", "https://share.google/Sbi9kwLonhxU18GED")).toBe("https://share.google/Sbi9kwLonhxU18GED");
+  });
+
+  it("prefers the host's own link over coordinates", () => {
+    expect(mapsUrl("Hotel", "https://maps.app.goo.gl/abc", 24.7955, 85.0002)).toBe("https://maps.app.goo.gl/abc");
+  });
+
+  it("keeps a link it does not trust out of the search query", () => {
+    // Not followed, and not pasted into a Google search either.
+    const url = new URL(mapsUrl("Hall", "https://evil.example/x"));
+    expect(url.origin).toBe("https://www.google.com");
+    expect(url.searchParams.get("query")).toContain("evil.example");
+  });
+
+  it("uses the link even when there is address text around it", () => {
+    // The link is the precise thing the host meant; the words beside it are
+    // for the guest to read on the card, not for the map to guess from.
+    expect(mapsUrl("Ghar", "Gaya, https://share.google/abc12")).toBe("https://share.google/abc12");
+  });
+});
+
 describe("mapsUrl with a picked venue", () => {
   it("sends the guest to the exact spot when the host picked one", () => {
     // The point of the whole feature: not a search that might land in the

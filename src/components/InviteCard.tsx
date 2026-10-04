@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { InviteData } from "@/lib/invite";
 import { eventDayParts, formatEventDate, formatEventTime } from "@/lib/invite";
+import { withoutMapLink } from "@/lib/map-link";
 import { getOccasion } from "@/lib/occasions";
 import { getPalette } from "@/lib/themes";
 
@@ -46,8 +47,11 @@ function resolve(invite: InviteData, dark: boolean, placeholders: Props["placeho
     host: pick(invite.hostedBy, placeholders.hostedBy),
     date: formatEventDate(invite.date, invite.lang) || (hi ? "तारीख चुनें" : "Pick a date"),
     time: formatEventTime(invite.date, invite.time, invite.lang),
-    venue: pick(invite.venue, placeholders.venue),
-    address: invite.address,
+    // A pasted map link belongs on the Directions button, not printed across
+    // the card — and certainly not baked into the image people save and send.
+    // Every template reads these, so stripping here covers all of them.
+    venue: pick(withoutMapLink(invite.venue), placeholders.venue),
+    address: withoutMapLink(invite.address),
     message: invite.message,
     emoji: getOccasion(invite.occasion)?.emoji ?? "🎉",
     ...eventDayParts(invite.date, invite.lang),

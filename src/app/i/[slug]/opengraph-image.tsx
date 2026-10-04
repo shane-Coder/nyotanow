@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { findInvite, toInviteData } from "@/db/queries";
 import { formatEventDate, formatEventTime } from "@/lib/invite";
+import { withoutMapLink } from "@/lib/map-link";
 import { getOccasion } from "@/lib/occasions";
 import { getPalette } from "@/lib/themes";
 
@@ -38,7 +39,8 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const p = getPalette(invite.palette);
   const occasion = getOccasion(invite.occasion);
   const title = isLatin(invite.title) ? invite.title : `${occasion?.name.en ?? "Event"} Invitation`;
-  const venue = isLatin(invite.venue) ? invite.venue : "";
+  const stripped = withoutMapLink(invite.venue);
+  const venue = isLatin(stripped) ? stripped : "";
   const when = [formatEventDate(invite.date, "en"), formatEventTime(invite.date, invite.time, "en")]
     .filter(Boolean)
     .join(" · ");

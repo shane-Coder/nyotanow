@@ -10,6 +10,7 @@ import { NativeShareButton, SaveImageButton } from "@/components/ShareActions";
 import { comingCount, findInvite, recordView, toInviteData } from "@/db/queries";
 import { GUEST_UI } from "@/lib/i18n";
 import { formatEventDate, formatEventTime, googleCalendarUrl, mapsUrl, shareMessage, siteUrl, todayInIST } from "@/lib/invite";
+import { withoutMapLink } from "@/lib/map-link";
 import { getPalette } from "@/lib/themes";
 
 const loadInvite = cache(findInvite);
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/i/[slug]">): Prom
     .join(", ");
   const hi = invite.lang === "hi";
   const title = `${invite.title} · ${hi ? "आपको न्योता है" : "You're invited"} 💌`;
-  const description = `${when} · ${invite.venue}. ${hi ? "जवाब देने के लिए टैप करें।" : "Tap to RSVP."}`;
+  const description = `${when} · ${withoutMapLink(invite.venue)}. ${hi ? "जवाब देने के लिए टैप करें।" : "Tap to RSVP."}`;
   return {
     title: { absolute: title },
     description,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { mapLinkIn, withoutMapLink } from "./map-link";
 import { OCCASION_IDS } from "./occasions";
 import { LANGS, PALETTE_IDS, TEMPLATE_IDS, type Lang } from "./themes";
 
@@ -176,6 +177,14 @@ export function rsvpStorageKey(slug: string): string {
  * before this did and what every invite at somebody's house still does.
  */
 export function mapsUrl(venue: string, address: string, lat?: number | null, lng?: number | null): string {
+  // A link the host pasted themselves wins: they stood in the place, opened
+  // their map and shared that exact pin. Nothing we can derive beats it.
+  const pasted = mapLinkIn(venue, address);
+  if (pasted) return pasted;
+
+  // No stripping needed below: we only reach here when there was no link
+  // worth following, and text we did not recognise is better off in the
+  // search than silently removed from it.
   const query =
     typeof lat === "number" && typeof lng === "number" ? `${lat},${lng}` : [venue, address].filter(Boolean).join(", ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
@@ -200,7 +209,9 @@ export function googleCalendarUrl(invite: InviteData, inviteUrl: string): string
     action: "TEMPLATE",
     text: invite.title,
     dates,
-    location: [invite.venue, invite.address].filter(Boolean).join(", "),
+    // A URL in the location field shows up verbatim in the guest's calendar
+    // entry, which is the same ugliness as on the card.
+    location: [withoutMapLink(invite.venue), withoutMapLink(invite.address)].filter(Boolean).join(", "),
     details: `${invite.message}\n\n${inviteUrl}`.trim(),
     ctz: EVENT_TZ,
   });
@@ -232,7 +243,7 @@ export function shareMessage(invite: InviteData): string {
     invite.lang === "hi"
       ? ["🎉 आपको न्योता है!", "न्योता देखें और जवाब दें 👇"]
       : ["🎉 You're invited!", "Open your invite & RSVP 👇"];
-  return `${invited}\n*${invite.title}*\n📅 ${when}\n📍 ${invite.venue}\n\n${cta}`;
+  return `${invited}\n*${invite.title}*\n📅 ${when}\n📍 ${withoutMapLink(invite.venue)}\n\n${cta}`;
 }
 
 export function whatsappShareText(invite: InviteData, url: string): string {
