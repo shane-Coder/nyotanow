@@ -111,4 +111,20 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE footer_clicks ADD COLUMN placement text NOT NULL DEFAULT '';
     `,
   },
+  {
+    name: "0007_invite_place",
+    sql: `
+      -- Where the venue actually is, when the host picked it from the
+      -- suggestions rather than typing it out. Only then: a guest tapping
+      -- Directions for "Rose Garden Hall" can otherwise land in the wrong
+      -- city, because that is a search, not a place.
+      --
+      -- Nullable with no default, and that is the point. Most invites are at
+      -- somebody's house and will never have coordinates, so "no location" has
+      -- to be an ordinary state rather than a gap to be filled. The venue and
+      -- address text stay the record of truth either way.
+      ALTER TABLE invites ADD COLUMN place_lat double precision;
+      ALTER TABLE invites ADD COLUMN place_lng double precision;
+    `,
+  },
 ];

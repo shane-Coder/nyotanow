@@ -71,7 +71,12 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <a href={mapsUrl(invite.venue, invite.address)} target="_blank" rel="noopener noreferrer" className={btn}>
+          <a
+            href={mapsUrl(invite.venue, invite.address, invite.placeLat, invite.placeLng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={btn}
+          >
             📍 {t.directions}
           </a>
           {!ended && (

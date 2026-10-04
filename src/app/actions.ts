@@ -20,6 +20,10 @@ function parseInvite(formData: FormData) {
     time: formData.get("time") ?? "",
     venue: formData.get("venue") ?? "",
     address: formData.get("address") ?? "",
+    // Empty rather than absent when the host typed the venue instead of
+    // picking it, which is the ordinary case and must not read as 0,0.
+    placeLat: formData.get("placeLat") || null,
+    placeLng: formData.get("placeLng") || null,
     message: formData.get("message") ?? "",
   });
 }

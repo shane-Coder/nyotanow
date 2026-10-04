@@ -33,6 +33,8 @@ const base: InviteData = {
   time: "17:00",
   venue: "Funcity Play Zone",
   address: "DLF Mall, Noida",
+  placeLat: null,
+  placeLng: null,
   message: "Cake and games!",
 };
 
@@ -132,6 +134,32 @@ describe("the create-your-own link", () => {
   it("keys each invite separately", () => {
     // Otherwise replying to one invite would silence the footer on every other.
     expect(rsvpStorageKey("a-abcde")).not.toBe(rsvpStorageKey("b-abcde"));
+  });
+});
+
+describe("mapsUrl with a picked venue", () => {
+  it("sends the guest to the exact spot when the host picked one", () => {
+    // The point of the whole feature: not a search that might land in the
+    // wrong city, but the building itself.
+    const url = new URL(mapsUrl("Rose Garden Hall", "Patna", 25.5941, 85.1376));
+    expect(url.searchParams.get("query")).toBe("25.5941,85.1376");
+  });
+
+  it("searches the text when there is no location", () => {
+    for (const [lat, lng] of [
+      [null, null],
+      [undefined, undefined],
+      [25.5941, null],
+      [null, 85.1376],
+    ] as const) {
+      // Half a coordinate is not a location; it must not become "25.5941,".
+      const url = new URL(mapsUrl("Rose Garden Hall", "Patna", lat, lng));
+      expect(url.searchParams.get("query")).toBe("Rose Garden Hall, Patna");
+    }
+  });
+
+  it("still works for every invite made before any of this existed", () => {
+    expect(new URL(mapsUrl("Funcity", "")).searchParams.get("query")).toBe("Funcity");
   });
 });
 

@@ -18,6 +18,12 @@ export const inviteSchema = z.object({
   time: z.union([z.string().regex(/^\d{2}:\d{2}$/, "Pick a valid time"), z.literal("")]),
   venue: z.string().trim().min(2, "Where is it happening?").max(120),
   address: z.string().trim().max(240),
+  // Present only when the host picked the venue from the suggestions. Comes
+  // from a hidden field, so it is range-checked rather than trusted, and
+  // anything odd becomes null instead of failing the whole submission — a
+  // host must never be blocked from creating an invite by a coordinate.
+  placeLat: z.coerce.number().min(-90).max(90).nullish().catch(null),
+  placeLng: z.coerce.number().min(-180).max(180).nullish().catch(null),
   message: z.string().trim().max(400, "Keep the message under 400 characters"),
 });
 
@@ -160,9 +166,19 @@ export function rsvpStorageKey(slug: string): string {
   return `nyota:rsvp:${slug}`;
 }
 
-export function mapsUrl(venue: string, address: string): string {
-  const q = [venue, address].filter(Boolean).join(", ");
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+/**
+ * Where the guest's Directions button goes.
+ *
+ * Coordinates when the host picked the venue from the suggestions, because
+ * then we know the actual place and a search can still be ambiguous: there is
+ * more than one Rose Garden Hall in India, and the guest gets a list instead
+ * of a pin. Falls back to searching the text, which is what every invite made
+ * before this did and what every invite at somebody's house still does.
+ */
+export function mapsUrl(venue: string, address: string, lat?: number | null, lng?: number | null): string {
+  const query =
+    typeof lat === "number" && typeof lng === "number" ? `${lat},${lng}` : [venue, address].filter(Boolean).join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 function gcalStamp(d: Date): string {

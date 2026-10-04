@@ -41,6 +41,8 @@ function toColumns(data: InviteData) {
     eventTime: data.time,
     venue: data.venue,
     address: data.address,
+    placeLat: data.placeLat,
+    placeLng: data.placeLng,
     message: data.message,
   };
 }
@@ -58,6 +60,8 @@ export function toInviteData(row: InviteRow): InviteData {
     time: row.eventTime,
     venue: row.venue,
     address: row.address,
+    placeLat: row.placeLat,
+    placeLng: row.placeLng,
     message: row.message,
   } as InviteData;
 }

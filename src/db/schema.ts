@@ -1,4 +1,16 @@
-import { boolean, date, index, integer, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  date,
+  doublePrecision,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const invites = pgTable("invites", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -16,6 +28,9 @@ export const invites = pgTable("invites", {
   eventTime: text("event_time").notNull(),
   venue: text("venue").notNull(),
   address: text("address").notNull(),
+  /** Set only when the host picked the venue from the suggestions; null is the common case. */
+  placeLat: doublePrecision("place_lat"),
+  placeLng: doublePrecision("place_lng"),
   message: text("message").notNull(),
   source: text("source").notNull().default(""),
   isPremium: boolean("is_premium").notNull().default(false),

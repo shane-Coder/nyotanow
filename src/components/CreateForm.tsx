@@ -8,6 +8,7 @@ import { clampToFuture, isPastEventAt, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
+import { VenueField } from "./VenueField";
 
 type Props = {
   initial: InviteData;
@@ -215,17 +216,27 @@ export function CreateForm({ initial, action, mode }: Props) {
               </p>
             )}
             <Field label="Venue" required error={errors.venue}>
-              <input
-                name="venue"
-                autoComplete="off"
+              <VenueField
                 value={data.venue}
-                onChange={(e) => set("venue", e.target.value)}
+                onChange={(venue) => set("venue", venue)}
+                onPick={(place) =>
+                  setData((d) => ({
+                    ...d,
+                    venue: place.name,
+                    // An existing address the host wrote themselves outranks a
+                    // suggestion's: they know their own landmark better.
+                    address: d.address || place.address,
+                    placeLat: place.lat,
+                    placeLng: place.lng,
+                  }))
+                }
                 placeholder={data.lang === "hi" ? "जैसे: होटल राजमहल" : "e.g. Hotel Rajmahal"}
-                maxLength={120}
-                required
                 className={input}
               />
             </Field>
+            {/* Travel with the form so a picked location survives submission. */}
+            <input type="hidden" name="placeLat" value={data.placeLat ?? ""} />
+            <input type="hidden" name="placeLng" value={data.placeLng ?? ""} />
             <Field label="Address" hint="Guests get a Google Maps button" error={errors.address}>
               <input
                 name="address"

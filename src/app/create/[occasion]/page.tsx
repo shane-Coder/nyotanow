@@ -41,6 +41,8 @@ export default async function CreatePage({ params }: PageProps<"/create/[occasio
     time: "",
     venue: "",
     address: "",
+    placeLat: null,
+    placeLng: null,
     message: occasion.message.en,
   };
 

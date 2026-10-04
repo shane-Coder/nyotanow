@@ -24,6 +24,15 @@ const LIMITS = {
   // Guessing the /stats key. Generous for the one person who owns it,
   // pointless for anyone brute-forcing 24 random characters.
   stats: [{ seconds: 60 * 60, max: 30 }],
+  // Venue suggestions. The only path here that can cost real money, so this
+  // one is tight on purpose. A host filling in a venue sends a handful of
+  // debounced requests; 120 an hour is many invites' worth and still far
+  // under the provider's free allowance even if somebody points a script at
+  // it. The daily cap is the one that actually bounds a bad day.
+  places: [
+    { seconds: 60 * 60, max: 120 },
+    { seconds: 60 * 60 * 24, max: 600 },
+  ],
 } satisfies Record<string, { seconds: number; max: number }[]>;
 
 const MESSAGES: Record<Bucket, string> = {
@@ -33,6 +42,8 @@ const MESSAGES: Record<Bucket, string> = {
   stats: "Too many attempts.",
   // Never shown: the redirect happens either way, the click just is not counted.
   footer: "Counted enough from here.",
+  // Never shown: suggestions just stop arriving and the host keeps typing.
+  places: "Enough lookups from here for now.",
 };
 
 export type Bucket = keyof typeof LIMITS;

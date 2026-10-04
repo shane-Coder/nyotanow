@@ -42,6 +42,8 @@ const invite = (over: Partial<InviteData> = {}): InviteData => ({
   time: "18:00",
   venue: "Test Hall",
   address: "Somewhere",
+  placeLat: null,
+  placeLng: null,
   message: "Come along",
   ...over,
 });
