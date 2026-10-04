@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local PGlite database (dev only)
 /.data/
+
+# local dev server log
+.dev.log
