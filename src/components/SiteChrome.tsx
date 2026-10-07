@@ -44,7 +44,16 @@ export function SiteFooter() {
           ))}
         </nav>
       </div>
-      <p className="pb-6 text-center text-xs text-stone-400">© {new Date().getFullYear()} NyotaNow · Made in India 🇮🇳</p>
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pb-6 text-center text-xs text-stone-400">
+        <span>© {new Date().getFullYear()} NyotaNow · Made in India 🇮🇳</span>
+        <span aria-hidden>·</span>
+        <Link href="/privacy" className="hover:text-stone-600">
+          Privacy
+        </Link>
+        <Link href="/terms" className="hover:text-stone-600">
+          Terms
+        </Link>
+      </div>
     </footer>
   );
 }

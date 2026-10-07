@@ -11,5 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
+    // Low priority, but listed: a privacy notice nobody can find is not one.
+    { url: `${base}/privacy`, changeFrequency: "yearly" as const, priority: 0.3 },
+    { url: `${base}/terms`, changeFrequency: "yearly" as const, priority: 0.3 },
   ];
 }
