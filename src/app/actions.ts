@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
+import { deleteInvite, saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
 import { inviteSchema, isPastEvent, rsvpSchema, type RsvpStatus } from "@/lib/invite";
 import { viewerIsOwner } from "@/lib/owner";
 import { rateLimited } from "@/lib/rate-limit";
@@ -93,6 +93,27 @@ export async function updateInviteAction(
   redirect(`/i/${slug}/manage?key=${key}&updated=1`);
 }
 
+/**
+ * Removes an invite for good, along with every reply to it.
+ *
+ * A real delete rather than a hidden flag: the privacy page promises erasure,
+ * and a row still sitting in the table with deleted = true is not erasure. The
+ * replies go with it by cascade.
+ */
+export async function deleteInviteAction(slug: string, key: string): Promise<FormState> {
+  const invite = await findInvite(slug);
+  // Same answer whether the invite is gone or the key is wrong, as everywhere.
+  if (!invite || !keyMatches(invite, key)) return { error: "This link is not valid anymore." };
+
+  try {
+    await deleteInvite(invite.id);
+  } catch (err) {
+    console.error("deleteInvite failed", err);
+    return { error: "Sorry, we couldn't delete this invite. Please try again in a moment." };
+  }
+  redirect("/?deleted=1");
+}
+
 export type RsvpState =
   | { ok: true; id: string; name: string; status: RsvpStatus }
   | { ok: false; error: string }
@@ -116,10 +137,11 @@ export async function rsvpAction(slug: string, _prev: RsvpState, formData: FormD
   const limited = await rateLimited("rsvp");
   if (limited) return { ok: false, error: limited };
 
-  const replaces = formData.get("replaces");
   let id: string;
   try {
-    id = await saveRsvp(invite.id, parsed.data, typeof replaces === "string" ? replaces : undefined);
+    // No id from the form any more: the server matches the guest by the name
+    // they typed. See saveRsvp for why.
+    id = await saveRsvp(invite.id, parsed.data);
   } catch (err) {
     console.error("rsvp failed", err);
     return { ok: false, error: "Sorry, your reply didn't go through. Please try again." };

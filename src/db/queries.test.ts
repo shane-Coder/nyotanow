@@ -24,6 +24,7 @@ const {
   pruneRateLimits,
   recordFooterClick,
   recordView,
+  deleteInvite,
   saveRsvp,
   updateInvite,
 } = await import("./queries");
@@ -154,28 +155,50 @@ describe("saveRsvp", () => {
     const { slug } = await insertInvite(invite());
     const row = (await findInvite(slug))!;
     const id = await saveRsvp(row.id, { name: "Ravi", status: "yes", guests: 2, note: "" });
-    const again = await saveRsvp(row.id, { name: "Ravi", status: "no", guests: 1, note: "" }, id);
+    const again = await saveRsvp(row.id, { name: "Ravi", status: "no", guests: 1, note: "" });
     expect(again).toBe(id);
     const all = await listRsvps(row.id);
     expect(all).toHaveLength(1);
     expect(all[0].status).toBe("no");
   });
 
-  it("ignores a replaces id belonging to a different invite", async () => {
-    const a = (await findInvite((await insertInvite(invite())).slug))!;
-    const b = (await findInvite((await insertInvite(invite())).slug))!;
-    const idOnA = await saveRsvp(a.id, { name: "Guest", status: "yes", guests: 1, note: "" });
-    await saveRsvp(b.id, { name: "Intruder", status: "yes", guests: 1, note: "" }, idOnA);
-    // A reply must survive untouched, and B gets its own new row.
-    expect((await listRsvps(a.id))[0].name).toBe("Guest");
-    expect(await listRsvps(b.id)).toHaveLength(1);
-  });
-
-  it("ignores a malformed replaces id rather than crashing", async () => {
+  it("recognises the same guest replying from another device", async () => {
+    // The bug this replaces: the browser remembered the reply, so opening the
+    // invite on a laptop after replying on a phone made a second row and the
+    // host's headcount counted one person twice.
     const { slug } = await insertInvite(invite());
     const row = (await findInvite(slug))!;
-    await saveRsvp(row.id, { name: "X", status: "yes", guests: 1, note: "" }, "not-a-uuid");
+    await saveRsvp(row.id, { name: "Priya", status: "yes", guests: 2, note: "from the phone" });
+    await saveRsvp(row.id, { name: "Priya", status: "yes", guests: 4, note: "from the laptop" });
+    const all = await listRsvps(row.id);
+    expect(all).toHaveLength(1);
+    expect(all[0].guests).toBe(4);
+  });
+
+  it("matches a returning guest regardless of spacing or case", async () => {
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Ravi Kumar", status: "yes", guests: 1, note: "" });
+    await saveRsvp(row.id, { name: "  ravi kumar  ", status: "no", guests: 1, note: "" });
     expect(await listRsvps(row.id)).toHaveLength(1);
+  });
+
+  it("keeps different guests apart", async () => {
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Ravi", status: "yes", guests: 1, note: "" });
+    await saveRsvp(row.id, { name: "Asha", status: "yes", guests: 1, note: "" });
+    expect(await listRsvps(row.id)).toHaveLength(2);
+  });
+
+  it("never reaches across invites", async () => {
+    // The same name on two invitations is two different replies.
+    const a = (await findInvite((await insertInvite(invite())).slug))!;
+    const b = (await findInvite((await insertInvite(invite())).slug))!;
+    await saveRsvp(a.id, { name: "Guest", status: "yes", guests: 1, note: "on A" });
+    await saveRsvp(b.id, { name: "Guest", status: "no", guests: 1, note: "on B" });
+    expect((await listRsvps(a.id))[0].note).toBe("on A");
+    expect(await listRsvps(b.id)).toHaveLength(1);
   });
 
   it("forces the headcount to one when a guest says they cannot come", async () => {
@@ -350,6 +373,37 @@ describe("footer clicks", () => {
     // Otherwise the breakdown and the headline number would disagree.
     const sum = (s: typeof after) => s.tapsByPlacement.reduce((n, p) => n + p.taps, 0);
     expect(sum(after)).toBe(after.loop7.taps);
+  });
+});
+
+describe("deleting an invite", () => {
+  it("removes the invite and every reply to it", async () => {
+    // The privacy page promises erasure, so this has to be a real delete and
+    // not a flag on a row that stays in the table.
+    const { slug } = await insertInvite(invite({ title: "To be removed" }));
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Asha", status: "yes", guests: 2, note: "see you" });
+    expect(await listRsvps(row.id)).toHaveLength(1);
+
+    await deleteInvite(row.id);
+
+    expect(await findInvite(slug)).toBeUndefined();
+    expect(await listRsvps(row.id)).toHaveLength(0);
+  });
+
+  it("leaves other invites alone", async () => {
+    const doomed = (await findInvite((await insertInvite(invite())).slug))!;
+    const keep = (await insertInvite(invite({ title: "Survivor" }))).slug;
+    await deleteInvite(doomed.id);
+    expect((await findInvite(keep))?.title).toBe("Survivor");
+  });
+
+  it("takes the deleted invite out of the product numbers", async () => {
+    const before = await getStats();
+    const { slug } = await insertInvite(invite());
+    const row = (await findInvite(slug))!;
+    await deleteInvite(row.id);
+    expect((await getStats()).invites).toBe(before.invites);
   });
 });
 

@@ -12,6 +12,21 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/:path*",
+        headers: [
+          // A host's manage link carries their edit key in the query string.
+          // Without this, the first external link added to that page would
+          // hand the key to whoever was linked to, in the Referer.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Stops an invite being framed inside someone else's page, where the
+          // RSVP buttons could be hidden under something else.
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Nothing here needs a camera, a microphone or a location.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        ],
+      },
+      {
         // Belt and braces: nothing linked from the private page should be able
         // to learn where the click came from.
         source: "/stats/:path*",

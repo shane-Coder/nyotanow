@@ -113,23 +113,45 @@ export async function recordView(id: string, mine = false): Promise<void> {
 }
 
 /** Inserts an RSVP, or overwrites the guest's earlier one when they change their answer. */
+/**
+ * Records a guest's answer, replacing their earlier one if they have already
+ * replied to this invite.
+ *
+ * Matched on the name they typed, not on an id the page hands back. The id
+ * version had two faults. A guest who replied on their phone and opened the
+ * link again on a laptop had no id there, so they appeared twice and the
+ * host's headcount was wrong — which was certain to happen rather than merely
+ * possible. And the id arrived in a hidden form field, so anything that
+ * learned another guest's id could overwrite their reply.
+ *
+ * The trade-off is real and worth naming: two different guests who type the
+ * same name on one invite become one entry. Invitations go to a known circle
+ * rather than the public, so that is rarer than the duplicates it prevents,
+ * and a host can see and fix one merged row — they cannot see a headcount
+ * that was quietly double-counted.
+ */
 export async function saveRsvp(
   inviteId: string,
   r: Pick<RsvpRow, "name" | "status" | "guests" | "note">,
-  replaces?: string,
 ): Promise<string> {
   const db = await getDb();
   const values = { ...r, guests: r.status === "no" ? 1 : r.guests };
-  if (replaces && /^[0-9a-f-]{36}$/.test(replaces)) {
-    const updated = await db
-      .update(rsvps)
-      .set({ ...values, createdAt: sql`now()` })
-      .where(and(eq(rsvps.id, replaces), eq(rsvps.inviteId, inviteId)))
-      .returning({ id: rsvps.id });
-    if (updated[0]) return updated[0].id;
-  }
+
+  const updated = await db
+    .update(rsvps)
+    .set({ ...values, createdAt: sql`now()` })
+    .where(and(eq(rsvps.inviteId, inviteId), sql`lower(btrim(${rsvps.name})) = lower(btrim(${r.name}))`))
+    .returning({ id: rsvps.id });
+  if (updated[0]) return updated[0].id;
+
   const [row] = await db.insert(rsvps).values({ inviteId, ...values }).returning({ id: rsvps.id });
   return row.id;
+}
+
+/** Removes an invite and, by cascade, every reply to it. Not recoverable. */
+export async function deleteInvite(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(invites).where(eq(invites.id, id));
 }
 
 export async function listRsvps(inviteId: string): Promise<RsvpRow[]> {

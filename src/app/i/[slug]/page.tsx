@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { cache } from "react";
 import { Countdown } from "@/components/Countdown";
 import { CreateOwnCta } from "@/components/CreateOwnCta";
+import { DocumentLang } from "@/components/DocumentLang";
 import { InviteCard } from "@/components/InviteCard";
 import { RsvpForm } from "@/components/RsvpForm";
 import { NativeShareButton, SaveImageButton } from "@/components/ShareActions";
@@ -66,6 +67,7 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
       className="min-h-full flex-1"
       style={{ background: `linear-gradient(180deg, ${pageTint} 0%, #fffaf3 55%)` }}
     >
+      <DocumentLang lang={invite.lang} />
       <main className="mx-auto max-w-md px-4 pt-6 pb-10">
         <div className="overflow-hidden rounded-3xl shadow-2xl ring-1 ring-black/5">
           <InviteCard invite={invite} id="invite-card" />
@@ -73,6 +75,10 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
 
         <div className="mt-6 text-stone-800">
           <Countdown date={invite.date} time={invite.time} labels={{ units: t.units, today: t.today, over: t.over }} />
+          {/* Only when a time is given, and only here rather than on the card:
+              an Indian invitation does not say IST, but a guest reading this
+              from abroad has nothing else to tell them what 6:30 PM means. */}
+          {invite.time && <p className="mt-2 text-center text-xs text-stone-500">{t.istNote}</p>}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
