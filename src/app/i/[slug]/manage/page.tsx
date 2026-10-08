@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InviteCard } from "@/components/InviteCard";
 import { RememberInvite } from "@/components/MyInvites";
+import { DangerZone } from "@/components/DangerZone";
+import { GuestListDownload } from "@/components/GuestListDownload";
 import { CopyButton, SaveImageButton, WhatsAppButton } from "@/components/ShareActions";
 import { SiteHeader } from "@/components/SiteChrome";
 import { findInvite, keyMatches, listRsvps, toInviteData } from "@/db/queries";
@@ -139,6 +141,15 @@ export default async function ManagePage({ params, searchParams }: PageProps<"/i
               </div>
             </div>
 
+            {rsvps.length > 0 && (
+              <div className="mt-4 flex justify-end">
+                <GuestListDownload
+                  title={invite.title}
+                  rsvps={rsvps.map((r) => ({ name: r.name, status: r.status, guests: r.guests, note: r.note }))}
+                />
+              </div>
+            )}
+
             {rsvps.length === 0 ? (
               <p className="mt-6 rounded-2xl bg-stone-50 p-6 text-center text-stone-500">
                 No replies yet. Share the invite and RSVPs will show up here.
@@ -178,6 +189,10 @@ export default async function ManagePage({ params, searchParams }: PageProps<"/i
               label="Copy my private link"
               className="mt-3 rounded-full bg-amber-900 px-4 py-2 text-sm font-semibold text-white"
             />
+          </section>
+
+          <section className="pb-4 text-center">
+            <DangerZone slug={slug} editKey={key!} title={invite.title} />
           </section>
         </div>
       </main>

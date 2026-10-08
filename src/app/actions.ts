@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
-import { inviteSchema, isPastEvent, rsvpSchema, type RsvpStatus } from "@/lib/invite";
+import { deleteInvite, saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
+import { MAX_YEARS_AHEAD, inviteSchema, isPastEvent, isTooFarAhead, rsvpSchema, todayInIST, type RsvpStatus } from "@/lib/invite";
 import { viewerIsOwner } from "@/lib/owner";
 import { rateLimited } from "@/lib/rate-limit";
 
@@ -51,6 +52,13 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
       fieldErrors: { date: ["That moment has already passed. Pick a time still to come."] },
     };
   }
+  // The other direction, which we missed until an invite went out for 8978.
+  if (isTooFarAhead(parsed.data.date, todayInIST())) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { date: [`That is too far ahead. Pick a date within ${MAX_YEARS_AHEAD} years.`] },
+    };
+  }
 
   // Checked only once the invite is known to be valid, so a flood of junk
   // submissions can't spend a real host's allowance.
@@ -93,6 +101,50 @@ export async function updateInviteAction(
   redirect(`/i/${slug}/manage?key=${key}&updated=1`);
 }
 
+/**
+ * Removes an invite for good, along with every reply to it.
+ *
+ * A real delete rather than a hidden flag: the privacy page promises erasure,
+ * and a row still sitting in the table with deleted = true is not erasure. The
+ * replies go with it by cascade.
+ */
+export async function deleteInviteAction(slug: string, key: string): Promise<FormState> {
+  const invite = await findInvite(slug);
+  // Same answer whether the invite is gone or the key is wrong, as everywhere.
+  if (!invite || !keyMatches(invite, key)) return { error: "This link is not valid anymore." };
+
+  try {
+    await deleteInvite(invite.id);
+  } catch (err) {
+    console.error("deleteInvite failed", err);
+    return { error: "Sorry, we couldn't delete this invite. Please try again in a moment." };
+  }
+  redirect("/?deleted=1");
+}
+
+/**
+ * Deleting an invite from the private stats page.
+ *
+ * Separate from the host's own delete because the operator holds no edit key
+ * for other people's invites. Authorised by the /stats cookie instead, which
+ * makes this the only path that can remove something its creator made — worth
+ * keeping visibly distinct rather than loosening the key check to allow it.
+ */
+export async function deleteInviteFromStatsAction(slug: string): Promise<void> {
+  if (!(await viewerIsOwner())) return;
+
+  const invite = await findInvite(slug);
+  if (!invite) return;
+
+  try {
+    await deleteInvite(invite.id);
+  } catch (err) {
+    console.error("deleteInviteFromStats failed", err);
+    return;
+  }
+  revalidatePath("/stats");
+}
+
 export type RsvpState =
   | { ok: true; id: string; name: string; status: RsvpStatus }
   | { ok: false; error: string }
@@ -116,10 +168,11 @@ export async function rsvpAction(slug: string, _prev: RsvpState, formData: FormD
   const limited = await rateLimited("rsvp");
   if (limited) return { ok: false, error: limited };
 
-  const replaces = formData.get("replaces");
   let id: string;
   try {
-    id = await saveRsvp(invite.id, parsed.data, typeof replaces === "string" ? replaces : undefined);
+    // No id from the form any more: the server matches the guest by the name
+    // they typed. See saveRsvp for why.
+    id = await saveRsvp(invite.id, parsed.data);
   } catch (err) {
     console.error("rsvp failed", err);
     return { ok: false, error: "Sorry, your reply didn't go through. Please try again." };

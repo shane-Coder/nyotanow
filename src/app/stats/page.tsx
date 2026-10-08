@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { StatsDeleteButton } from "@/components/StatsDeleteButton";
 import { getStats, type Stats } from "@/db/queries";
 import { getOccasion } from "@/lib/occasions";
 import { agoLabel, fetchSentryIssues, type SentryFeed } from "@/lib/sentry-issues";
@@ -150,6 +151,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                   <th className="pb-2">Made</th>
                   <th className="pb-2 text-right">Views</th>
                   <th className="pb-2 text-right">RSVPs</th>
+                  <th className="pb-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -184,6 +186,9 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                             .join(" · ")}
                         </span>
                       )}
+                    </td>
+                    <td className="py-2 pl-2 text-right">
+                      <StatsDeleteButton slug={i.slug} title={i.title} />
                     </td>
                   </tr>
                 ))}

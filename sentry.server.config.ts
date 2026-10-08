@@ -1,5 +1,6 @@
 // Server runtime (Node). Loaded by src/instrumentation.ts.
 import * as Sentry from "@sentry/nextjs";
+import { scrubSecrets } from "./src/lib/scrub";
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -9,4 +10,5 @@ Sentry.init({
   // and tells us nothing we can't already see in Vercel Analytics.
   tracesSampleRate: 0,
   sendDefaultPii: false,
+  beforeSend: scrubSecrets,
 });

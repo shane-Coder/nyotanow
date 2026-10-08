@@ -91,7 +91,6 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
         ))}
       </div>
       <input type="hidden" name="status" value={status} />
-      {saved && <input type="hidden" name="replaces" value={saved.id} />}
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-stone-600">{t.yourName}</span>
