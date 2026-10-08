@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteInvite, saveRsvp, findInvite, insertInvite, keyMatches, updateInvite } from "@/db/queries";
-import { inviteSchema, isPastEvent, rsvpSchema, type RsvpStatus } from "@/lib/invite";
+import { MAX_YEARS_AHEAD, inviteSchema, isPastEvent, isTooFarAhead, rsvpSchema, todayInIST, type RsvpStatus } from "@/lib/invite";
 import { viewerIsOwner } from "@/lib/owner";
 import { rateLimited } from "@/lib/rate-limit";
 
@@ -49,6 +50,13 @@ export async function createInviteAction(_prev: FormState, formData: FormData): 
     return {
       error: "Please fix the highlighted fields.",
       fieldErrors: { date: ["That moment has already passed. Pick a time still to come."] },
+    };
+  }
+  // The other direction, which we missed until an invite went out for 8978.
+  if (isTooFarAhead(parsed.data.date, todayInIST())) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { date: [`That is too far ahead. Pick a date within ${MAX_YEARS_AHEAD} years.`] },
     };
   }
 
@@ -112,6 +120,29 @@ export async function deleteInviteAction(slug: string, key: string): Promise<For
     return { error: "Sorry, we couldn't delete this invite. Please try again in a moment." };
   }
   redirect("/?deleted=1");
+}
+
+/**
+ * Deleting an invite from the private stats page.
+ *
+ * Separate from the host's own delete because the operator holds no edit key
+ * for other people's invites. Authorised by the /stats cookie instead, which
+ * makes this the only path that can remove something its creator made — worth
+ * keeping visibly distinct rather than loosening the key check to allow it.
+ */
+export async function deleteInviteFromStatsAction(slug: string): Promise<void> {
+  if (!(await viewerIsOwner())) return;
+
+  const invite = await findInvite(slug);
+  if (!invite) return;
+
+  try {
+    await deleteInvite(invite.id);
+  } catch (err) {
+    console.error("deleteInviteFromStats failed", err);
+    return;
+  }
+  revalidatePath("/stats");
 }
 
 export type RsvpState =

@@ -4,7 +4,7 @@ import { useActionState, useState, type ReactNode } from "react";
 import { useIstNow, useStoredValue } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
-import { clampToFuture, isPastEventAt, type InviteData } from "@/lib/invite";
+import { clampToFuture, isPastEventAt, maxEventDate, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
@@ -193,6 +193,9 @@ export function CreateForm({ initial, action, mode }: Props) {
                 // Only while creating: editing an event that has already
                 // happened is allowed, it just warns.
                 min={mode === "create" ? (ist?.date ?? undefined) : undefined}
+                // The other end. Without it a slipped keystroke made an invite
+                // for the year 8978 with a countdown of 2.5 million days.
+                max={ist ? maxEventDate(ist.date) : undefined}
                 required
                 className={input}
               />

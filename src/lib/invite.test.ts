@@ -6,6 +6,9 @@ import {
   eventDayParts,
   isPastEvent,
   isPastEventAt,
+  isTooFarAhead,
+  maxEventDate,
+  MAX_YEARS_AHEAD,
   eventStart,
   formatEventDate,
   formatEventTime,
@@ -94,6 +97,51 @@ describe("slugBase", () => {
     const slug = slugBase("A very long birthday party title that runs on and on", "birthday");
     expect(slug.length).toBeLessThanOrEqual(40);
     expect(slug.endsWith("-")).toBe(false);
+  });
+});
+
+describe("how far ahead an event may be", () => {
+  // A real invite went out for 7 July 8978 with a countdown of two and a half
+  // million days. The past was guarded carefully; this direction was not.
+  it("refuses a year nobody meant to type", () => {
+    expect(isTooFarAhead("8978-07-07", "2026-10-08")).toBe(true);
+  });
+
+  it("allows an event planned years out", () => {
+    for (const d of ["2026-12-31", "2028-02-14", "2031-10-08"]) {
+      expect(isTooFarAhead(d, "2026-10-08"), d).toBe(false);
+    }
+  });
+
+  it("allows exactly the limit and refuses the day after", () => {
+    expect(isTooFarAhead("2031-10-08", "2026-10-08")).toBe(false);
+    expect(isTooFarAhead("2031-10-09", "2026-10-08")).toBe(true);
+  });
+
+  it("treats an empty date as nothing to complain about", () => {
+    // The host has not picked one yet; "required" is a different message.
+    expect(isTooFarAhead("", "2026-10-08")).toBe(false);
+  });
+
+  it("offers a max the date picker can use", () => {
+    expect(maxEventDate("2026-10-08")).toBe("2031-10-08");
+    expect(MAX_YEARS_AHEAD).toBe(5);
+  });
+
+  it("pulls an absurd date back to the limit rather than rejecting it", () => {
+    // WebKit ignores max=, so the field has to correct itself on blur the way
+    // it already does for dates that have gone.
+    expect(clampToFuture("8978-07-07", "12:39", "2026-10-08", "09:00")).toEqual({
+      date: "2031-10-08",
+      time: "12:39",
+    });
+  });
+
+  it("still leaves a sensible date alone", () => {
+    expect(clampToFuture("2026-12-25", "18:00", "2026-10-08", "09:00")).toEqual({
+      date: "2026-12-25",
+      time: "18:00",
+    });
   });
 });
 

@@ -80,6 +80,40 @@ export function isPastEventAt(date: string, time: string, nowDate: string, nowTi
  * iPad nothing is greyed out and a host can pick this morning. Rather than let
  * them find out when the server refuses it, the field corrects itself.
  */
+/**
+ * How far ahead an event may be.
+ *
+ * We blocked the past with some care and never thought about the other
+ * direction, so a typed year sailed through: a real invite went out for 7 July
+ * 8978, with a countdown reading two and a half million days. Any four-digit
+ * year matched the pattern.
+ *
+ * Five years is far more than anyone books. A wedding two years out, a
+ * milestone anniversary planned early — all fine; a slipped keystroke is not.
+ */
+export const MAX_YEARS_AHEAD = 5;
+
+/** The latest date a host may pick, as YYYY-MM-DD. */
+export function maxEventDate(nowDate: string): string {
+  const year = Number(nowDate.slice(0, 4));
+  return Number.isFinite(year) ? `${year + MAX_YEARS_AHEAD}${nowDate.slice(4)}` : nowDate;
+}
+
+/** True when the date is further ahead than we are willing to accept. */
+export function isTooFarAhead(date: string, nowDate: string): boolean {
+  if (!date) return false;
+  return date > maxEventDate(nowDate);
+}
+
+/**
+ * Moves a date/time that has gone forward to the earliest moment still
+ * available, and one that is implausibly far ahead back to the latest allowed.
+ *
+ * Needed because WebKit ignores min= and max= on date inputs, so on iPhone and
+ * iPad nothing is greyed out and a host can pick this morning — or the year
+ * 8978. Rather than let them find out when the server refuses it, the field
+ * corrects itself.
+ */
 export function clampToFuture(
   date: string,
   time: string,
@@ -91,6 +125,7 @@ export function clampToFuture(
     // The day moves to today, which can strand a time earlier than right now.
     return { date: nowDate, time: time !== "" && time < nowTime ? nowTime : time };
   }
+  if (isTooFarAhead(date, nowDate)) return { date: maxEventDate(nowDate), time };
   if (date === nowDate && time !== "" && time < nowTime) return { date, time: nowTime };
   return { date, time };
 }
