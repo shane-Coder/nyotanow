@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { StatsDeleteButton } from "@/components/StatsDeleteButton";
 import { INVITES_PER_PAGE, getStats, listInvites, type InviteList, type Stats } from "@/db/queries";
+import { formatEventDate, todayInIST } from "@/lib/invite";
 import { getOccasion } from "@/lib/occasions";
 import { agoLabel, fetchSentryIssues, type SentryFeed } from "@/lib/sentry-issues";
 import { STATS_COOKIE, cookieOk } from "@/lib/stats-auth";
@@ -160,11 +161,19 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
  * is when the host arrived; "edited" is when they came back, which is the
  * only signal here that an invite is being lived with rather than made once
  * and forgotten.
+ *
+ * Events that have already happened are struck through and greyed. Most of
+ * this table is history, and neither column above says when the event is, so
+ * without this there is no telling a wedding next Saturday from one last
+ * March — which is the first thing worth knowing about a row.
  */
 function InviteTable({ list }: { list: InviteList }) {
   if (list.total === 0) return <p className="text-stone-500">Nothing yet.</p>;
 
   const from = (list.page - 1) * INVITES_PER_PAGE + 1;
+  // Read once for the whole table, so no row is judged against a different
+  // "today" than the row above it.
+  const today = todayInIST();
 
   return (
     <>
@@ -190,56 +199,68 @@ function InviteTable({ list }: { list: InviteList }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {list.rows.map((i) => (
-                <tr key={i.slug}>
-                  <td className="max-w-[220px] truncate py-2 pr-3">
-                    <a href={`/i/${i.slug}`} className="font-medium hover:underline">
-                      {i.title}
-                    </a>
-                    {i.mine && (
-                      <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">
-                        you
-                      </span>
-                    )}
-                    {i.source === "invite" && (
-                      <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
-                        from invite
-                      </span>
-                    )}
-                    {i.rsvpsClearedAt && (
-                      <span
-                        title={`Guest names deleted on ${dateFmt.format(i.rsvpsClearedAt)}`}
-                        className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-500"
+              {list.rows.map((i) => {
+                // An event today is still ahead of us — it could be this
+                // evening. Same rule the host's own page uses.
+                const ended = i.eventDate < today;
+                return (
+                  <tr key={i.slug} className={ended ? "text-stone-400" : undefined}>
+                    <td className="max-w-[220px] truncate py-2 pr-3">
+                      {/* The date is in the title attribute because neither
+                          column shows the event date, so the strikethrough
+                          would otherwise have no visible cause. */}
+                      <a
+                        href={`/i/${i.slug}`}
+                        title={`Event: ${formatEventDate(i.eventDate, "en")}`}
+                        className={`font-medium hover:underline ${ended ? "text-stone-400 line-through decoration-stone-300" : ""}`}
                       >
-                        names cleared
-                      </span>
+                        {i.title}
+                      </a>
+                      {i.mine && (
+                        <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">
+                          you
+                        </span>
+                      )}
+                      {i.source === "invite" && (
+                        <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
+                          from invite
+                        </span>
+                      )}
+                      {i.rsvpsClearedAt && (
+                        <span
+                          title={`Guest names deleted on ${dateFmt.format(i.rsvpsClearedAt)}`}
+                          className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-500"
+                        >
+                          names cleared
+                        </span>
+                      )}
+                    </td>
+                    <Stamp at={i.createdAt} muted={ended} />
+                    {/* Equal to created_at until the host edits, so showing it
+                        every time would make a dash the usual reading and the
+                        interesting rows harder to spot, not easier. */}
+                    {i.updatedAt > i.createdAt ? (
+                      <Stamp at={i.updatedAt} muted={ended} />
+                    ) : (
+                      <td className="py-2 pr-3 text-stone-300">—</td>
                     )}
-                  </td>
-                  <Stamp at={i.createdAt} />
-                  {/* Equal to created_at until the host edits, so showing it
-                      every time would make a dash the usual reading and the
-                      interesting rows harder to spot, not easier. */}
-                  {i.updatedAt > i.createdAt ? (
-                    <Stamp at={i.updatedAt} />
-                  ) : (
-                    <td className="py-2 pr-3 text-stone-300">—</td>
-                  )}
-                  <td className="py-2 text-right tabular-nums">{i.views}</td>
-                  <td className="py-2 text-right tabular-nums">
-                    {i.rsvps}
-                    {i.rsvps > 0 && (
-                      <span className="ml-1.5 text-xs font-normal text-stone-400">
-                        {[i.yes && `${i.yes} yes`, i.maybe && `${i.maybe} maybe`, i.no && `${i.no} no`]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 pl-2 text-right">
-                    <StatsDeleteButton slug={i.slug} title={i.title} />
-                  </td>
-                </tr>
-              ))}
+                    <td className="py-2 text-right tabular-nums">{i.views}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {i.rsvps}
+                      {i.rsvps > 0 && (
+                        <span className="ml-1.5 text-xs font-normal text-stone-400">
+                          {[i.yes && `${i.yes} yes`, i.maybe && `${i.maybe} maybe`, i.no && `${i.no} no`]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pl-2 text-right">
+                      <StatsDeleteButton slug={i.slug} title={i.title} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -265,12 +286,17 @@ function InviteTable({ list }: { list: InviteList }) {
   );
 }
 
-/** A date with the time under it, in IST. */
-function Stamp({ at }: { at: Date }) {
+/**
+ * A date with the time under it, in IST.
+ *
+ * `muted` because these cells set their own colour, so a past event's row
+ * would otherwise keep full-strength timestamps beside a greyed-out title.
+ */
+function Stamp({ at, muted }: { at: Date; muted?: boolean }) {
   return (
-    <td className="py-2 pr-3 whitespace-nowrap text-stone-500">
+    <td className={`py-2 pr-3 whitespace-nowrap ${muted ? "text-stone-400" : "text-stone-500"}`}>
       {dateFmt.format(at)}
-      <span className="ml-1.5 text-xs text-stone-400">{timeFmt.format(at)}</span>
+      <span className={`ml-1.5 text-xs ${muted ? "text-stone-300" : "text-stone-400"}`}>{timeFmt.format(at)}</span>
     </td>
   );
 }

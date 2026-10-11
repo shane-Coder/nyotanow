@@ -585,6 +585,14 @@ describe("listInvites", () => {
     }
   });
 
+  it("returns the event date as a plain YYYY-MM-DD string", async () => {
+    // Comparable with todayInIST() as a string, which is how the stats table
+    // decides whether to strike a row through. A Date object here would
+    // compare as something else entirely and silently never match.
+    const { slug } = await insertInvite(invite({ date: "2027-03-14" }));
+    expect((await listedRow(slug)).eventDate).toBe("2027-03-14");
+  });
+
   it("shows when an invite was last edited, and not before", async () => {
     const { slug } = await insertInvite(invite({ title: "Untouched" }));
     const fresh = await listedRow(slug);
