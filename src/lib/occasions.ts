@@ -22,9 +22,9 @@ export type Occasion = {
 
 export const OCCASIONS = [
   {
-    // First in the grid for Navratri 2026 (11–19 October, Dussehra on the
-    // 20th). It sits here to be found during the festival, not forever —
-    // move it down beside pooja once Dussehra has passed.
+    // Leads the grid. Navratri comes round twice a year, every year, and the
+    // nine nights behind this page do not change between them — so this is a
+    // standing occasion, not a banner to take down after Dussehra.
     id: "navratri",
     emoji: "🔱",
     name: { en: "Navratri & Durga Puja", hi: "नवरात्रि और दुर्गा पूजा" },

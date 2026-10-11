@@ -45,11 +45,41 @@ export const PALETTES = [
   { id: "slate", name: "Slate", bg: "#1b1b20", bg2: "#34343c", ink: "#f4f4f6", accent: "#c6a04a", soft: "#292930", dark: true },
 ] as const satisfies readonly Palette[];
 
-export type PaletteId = (typeof PALETTES)[number]["id"];
+/** One of the palettes above, with its id narrowed to that exact palette. */
+export type PaletteOption = (typeof PALETTES)[number];
+export type PaletteId = PaletteOption["id"];
 export const PALETTE_IDS = PALETTES.map((p) => p.id) as [PaletteId, ...PaletteId[]];
 
 export function getPalette(id: string): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];
+}
+
+/**
+ * The six palettes that exist only to complete Navratri's weekday colours.
+ *
+ * They are real palettes and an invite may hold any of them, but they are
+ * not offered everywhere: thirteen swatches under a birthday is a wall of
+ * choice bought with nothing, and grey and vermilion read as a festival
+ * rather than a party.
+ */
+const NAVRATRI_PALETTES = new Set<string>(["pearl", "vermilion", "cobalt", "turmeric", "emerald", "slate"]);
+
+/**
+ * The colours to offer for an occasion.
+ *
+ * `current` is always included, whatever the occasion. A palette is stored
+ * as plain text on the invite, so a host who picked Cobalt for a Navratri
+ * card and then switched the occasion — or came back to edit it a month
+ * later — must still see the colour their card is actually in. Dropping it
+ * from the row would show an unselected set and look like the choice had
+ * been thrown away.
+ */
+export function palettesFor(occasion: string, current?: string): readonly PaletteOption[] {
+  if (occasion === "navratri") return PALETTES;
+  const offered = PALETTES.filter((p) => !NAVRATRI_PALETTES.has(p.id));
+  if (!current || offered.some((p) => p.id === current)) return offered;
+  const chosen = PALETTES.find((p) => p.id === current);
+  return chosen ? [...offered, chosen] : offered;
 }
 
 /**

@@ -6,7 +6,7 @@ import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
 import { clampToFuture, isPastEventAt, maxEventDate, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
-import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
+import { TEMPLATES, palettesFor, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
 import { NavratriNights } from "./NavratriNights";
 import { VenueField } from "./VenueField";
@@ -319,7 +319,7 @@ export function CreateForm({ initial, action, mode }: Props) {
           </div>
           <p className="mt-5 mb-2 text-sm font-medium text-stone-600">Colours</p>
           <div className="flex flex-wrap gap-3">
-            {PALETTES.map((p) => (
+            {palettesFor(data.occasion, data.palette).map((p) => (
               <button
                 key={p.id}
                 type="button"
