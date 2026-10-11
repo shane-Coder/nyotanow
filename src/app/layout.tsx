@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Playfair_Display, Poppins, Tiro_Devanagari_Hindi } from "next/font/google";
 import { StageBanner } from "@/components/StageBanner";
 import { siteUrl } from "@/lib/invite";
@@ -49,6 +50,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         {/* Cookieless page-view counts (Vercel Web Analytics). */}
         <Analytics />
+        {/*
+          Core Web Vitals from real visitors, which is the only way to know
+          what the site is actually like on the phones people have. Tapping
+          an occasion was measured at 248ms in the field — past the 200ms
+          where an interaction stops feeling instant — and that was found by
+          chance rather than because anything was watching. This watches.
+
+          Free on Hobby and it sets no cookies. Preview and production are
+          reported separately, so a deployment used for testing cannot drag
+          the real numbers around.
+        */}
+        <SpeedInsights />
       </body>
     </html>
   );
