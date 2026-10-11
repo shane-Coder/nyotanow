@@ -4,6 +4,12 @@ export type Occasion = {
   id: string;
   emoji: string;
   name: Record<Lang, string>;
+  /**
+   * How the English name reads inside a sentence, when lowercasing it would
+   * be wrong. "your birthday invite" is fine; "your navratri & durga puja
+   * invite" is not — those are proper nouns.
+   */
+  lowerName?: string;
   /** Shown on the landing grid and SEO copy. */
   blurb: string;
   titlePlaceholder: Record<Lang, string>;
@@ -15,6 +21,27 @@ export type Occasion = {
 };
 
 export const OCCASIONS = [
+  {
+    // First in the grid for Navratri 2026 (11–19 October, Dussehra on the
+    // 20th). It sits here to be found during the festival, not forever —
+    // move it down beside pooja once Dussehra has passed.
+    id: "navratri",
+    emoji: "🔱",
+    name: { en: "Navratri & Durga Puja", hi: "नवरात्रि और दुर्गा पूजा" },
+    lowerName: "Navratri & Durga Puja",
+    blurb: "Pandal invitations, jagran, kanya pujan, bhog and Dussehra",
+    titlePlaceholder: { en: "Durga Puja Mahotsav", hi: "श्री दुर्गा पूजा महोत्सव" },
+    hostPlaceholder: { en: "Shree Durga Puja Samiti", hi: "श्री दुर्गा पूजा समिति" },
+    kicker: { en: "With the blessings of Maa Durga", hi: "माँ दुर्गा के आशीर्वाद से" },
+    message: {
+      en: "Join us for the aarti, bhog and cultural programme. All are welcome.",
+      hi: "आरती, भोग एवं सांस्कृतिक कार्यक्रम में सपरिवार पधारें। जय माता दी!",
+    },
+    // A temple arch, and the marigold of every puja thali. Day one of
+    // Navratri 2026 is orange, which is where marigold already sits.
+    template: "mehrab",
+    palette: "marigold",
+  },
   {
     id: "birthday",
     emoji: "🎂",
@@ -112,4 +139,16 @@ export const OCCASION_IDS = OCCASIONS.map((o) => o.id) as [OccasionId, ...Occasi
 
 export function getOccasion(id: string): Occasion | undefined {
   return OCCASIONS.find((o) => o.id === id);
+}
+
+/**
+ * The English name as it should read mid-sentence — "your birthday invite",
+ * but "your Navratri & Durga Puja invite".
+ *
+ * Shared so the heading and the page description cannot disagree about how an
+ * occasion is written, which is how one of them would end up lowercasing a
+ * goddess.
+ */
+export function sentenceName(o: Occasion): string {
+  return o.lowerName ?? o.name.en.toLowerCase();
 }

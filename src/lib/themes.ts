@@ -48,6 +48,7 @@ export function getPalette(id: string): Palette {
  * Anything left out follows in the order declared above.
  */
 const PREFERRED: Record<string, readonly TemplateId[]> = {
+  navratri: ["mehrab", "shubh", "poster"],
   birthday: ["confetti", "poster", "botanical"],
   anniversary: ["classic", "botanical", "minimal"],
   "griha-pravesh": ["shubh", "mehrab", "classic"],
