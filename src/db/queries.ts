@@ -408,6 +408,8 @@ export type InviteListRow = {
   occasion: string;
   source: string;
   mine: boolean;
+  /** The day of the event itself, as YYYY-MM-DD in IST. Not a timestamp. */
+  eventDate: string;
   views: number;
   rsvps: number;
   yes: number;
@@ -447,6 +449,7 @@ export async function listInvites(page = 1, perPage = INVITES_PER_PAGE): Promise
     occasion: string;
     source: string;
     mine: boolean;
+    event_date: string;
     views: number;
     rsvps: number;
     yes: number;
@@ -459,6 +462,10 @@ export async function listInvites(page = 1, perPage = INVITES_PER_PAGE): Promise
   }>(
     await db.execute(sql`
       SELECT i.slug, i.title, i.occasion, i.source, i.mine, i.view_count::int AS views,
+             -- Formatted in SQL, not in JS: this goes through db.execute, which
+             -- skips drizzle's type mapping, and both drivers hand back a date
+             -- column as a JS Date whose toString() is nothing like YYYY-MM-DD.
+             to_char(i.event_date, 'YYYY-MM-DD') AS event_date,
              (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id) AS rsvps,
              -- Counts, never names. The guest list belongs to the host; this
              -- page only needs to know whether anyone answered and how.
@@ -488,6 +495,7 @@ export async function listInvites(page = 1, perPage = INVITES_PER_PAGE): Promise
       occasion: x.occasion,
       source: x.source,
       mine: Boolean(x.mine),
+      eventDate: String(x.event_date),
       views: Number(x.views),
       rsvps: Number(x.rsvps),
       yes: Number(x.yes),
