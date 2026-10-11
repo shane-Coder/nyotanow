@@ -32,13 +32,54 @@ export const PALETTES = [
   { id: "royal", name: "Royal", bg: "#1e1036", bg2: "#3b1d6e", ink: "#fdf4dc", accent: "#e8b84a", soft: "#4c2a85", dark: true },
   { id: "peacock", name: "Peacock", bg: "#062c30", bg2: "#0b4f55", ink: "#f0fdfa", accent: "#f2c14e", soft: "#115e67", dark: true },
   { id: "maroon", name: "Maroon", bg: "#3a0a12", bg2: "#6b1020", ink: "#fff3e0", accent: "#f0b429", soft: "#5a1420", dark: true },
+  // The six below complete the Navratri weekday colours. Sunday's orange is
+  // marigold, Monday's purple is royal and the ninth night's peacock green is
+  // peacock; these fill the gaps in between. They are ordinary palettes, so
+  // any invite can use them — a griha pravesh in cobalt is nobody's business
+  // but the host's.
+  { id: "pearl", name: "Pearl", bg: "#fffdf8", bg2: "#f0e7d6", ink: "#3b3326", accent: "#a8842c", soft: "#efe5d2", dark: false },
+  { id: "vermilion", name: "Vermilion", bg: "#fff4f1", bg2: "#ffd2c6", ink: "#4d1407", accent: "#d93a16", soft: "#ffc8b8", dark: false },
+  { id: "cobalt", name: "Cobalt", bg: "#0a1d3d", bg2: "#17366d", ink: "#eaf2ff", accent: "#efbe55", soft: "#1e4182", dark: true },
+  { id: "turmeric", name: "Turmeric", bg: "#fffbe8", bg2: "#ffeaa3", ink: "#473600", accent: "#bd8b00", soft: "#fdeeb4", dark: false },
+  { id: "emerald", name: "Emerald", bg: "#04281a", bg2: "#0a4a2f", ink: "#effdf4", accent: "#e0b03a", soft: "#0e5a3a", dark: true },
+  { id: "slate", name: "Slate", bg: "#1b1b20", bg2: "#34343c", ink: "#f4f4f6", accent: "#c6a04a", soft: "#292930", dark: true },
 ] as const satisfies readonly Palette[];
 
-export type PaletteId = (typeof PALETTES)[number]["id"];
+/** One of the palettes above, with its id narrowed to that exact palette. */
+export type PaletteOption = (typeof PALETTES)[number];
+export type PaletteId = PaletteOption["id"];
 export const PALETTE_IDS = PALETTES.map((p) => p.id) as [PaletteId, ...PaletteId[]];
 
 export function getPalette(id: string): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];
+}
+
+/**
+ * The six palettes that exist only to complete Navratri's weekday colours.
+ *
+ * They are real palettes and an invite may hold any of them, but they are
+ * not offered everywhere: thirteen swatches under a birthday is a wall of
+ * choice bought with nothing, and grey and vermilion read as a festival
+ * rather than a party.
+ */
+const NAVRATRI_PALETTES = new Set<string>(["pearl", "vermilion", "cobalt", "turmeric", "emerald", "slate"]);
+
+/**
+ * The colours to offer for an occasion.
+ *
+ * `current` is always included, whatever the occasion. A palette is stored
+ * as plain text on the invite, so a host who picked Cobalt for a Navratri
+ * card and then switched the occasion — or came back to edit it a month
+ * later — must still see the colour their card is actually in. Dropping it
+ * from the row would show an unselected set and look like the choice had
+ * been thrown away.
+ */
+export function palettesFor(occasion: string, current?: string): readonly PaletteOption[] {
+  if (occasion === "navratri") return PALETTES;
+  const offered = PALETTES.filter((p) => !NAVRATRI_PALETTES.has(p.id));
+  if (!current || offered.some((p) => p.id === current)) return offered;
+  const chosen = PALETTES.find((p) => p.id === current);
+  return chosen ? [...offered, chosen] : offered;
 }
 
 /**
@@ -48,6 +89,7 @@ export function getPalette(id: string): Palette {
  * Anything left out follows in the order declared above.
  */
 const PREFERRED: Record<string, readonly TemplateId[]> = {
+  navratri: ["mehrab", "shubh", "poster"],
   birthday: ["confetti", "poster", "botanical"],
   anniversary: ["classic", "botanical", "minimal"],
   "griha-pravesh": ["shubh", "mehrab", "classic"],

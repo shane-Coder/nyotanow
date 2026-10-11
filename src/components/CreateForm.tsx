@@ -1,13 +1,14 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useDeferredValue, useState, type ReactNode } from "react";
 import { useIstNow, useStoredValue } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
 import { clampToFuture, isPastEventAt, maxEventDate, type InviteData } from "@/lib/invite";
-import { OCCASIONS, getOccasion } from "@/lib/occasions";
-import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
+import { OCCASIONS, getOccasion, hidesColourPicker } from "@/lib/occasions";
+import { TEMPLATES, palettesFor, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
+import { NavratriNights } from "./NavratriNights";
 import { VenueField } from "./VenueField";
 
 type Props = {
@@ -47,6 +48,19 @@ export function CreateForm({ initial, action, mode }: Props) {
       : undefined);
 
   const set = <K extends keyof InviteData>(key: K, value: InviteData[K]) => setData((d) => ({ ...d, [key]: value }));
+
+  /**
+   * The gallery's copy of the form, allowed to lag.
+   *
+   * Seven full cards re-render on every tap and every keystroke, and they
+   * were the whole of an interaction that measured 248ms in the field —
+   * past the 200ms where an interaction stops feeling instant. Deferring
+   * them lets React paint the pressed button and the big preview straight
+   * away and redraw the seven thumbnails after, where a frame or two of lag
+   * is invisible. The large preview above still uses `data` directly,
+   * because that one the host is watching.
+   */
+  const galleryData = useDeferredValue(data);
 
   // Shown after a correction, so the field changing under the host's finger
   // reads as a rule rather than a glitch. WebKit users see this most.
@@ -95,7 +109,11 @@ export function CreateForm({ initial, action, mode }: Props) {
       kicker: d.kicker === occasion.kicker[d.lang] ? next.kicker[d.lang] : d.kicker,
       message: d.message === occasion.message[d.lang] ? next.message[d.lang] : d.message,
       template: d.template === occasion.template ? next.template : d.template,
-      palette: d.palette === occasion.palette ? next.palette : d.palette,
+      // A control the host cannot see must not hold a value they did not
+      // pick. Moving into an occasion with no colour row therefore takes
+      // that occasion's own colour rather than stranding the last one, and
+      // the night they pick next sets it properly anyway.
+      palette: hidesColourPicker(next.id) || d.palette === occasion.palette ? next.palette : d.palette,
     }));
     window.history.replaceState(null, "", `/create/${next.id}`);
   }
@@ -168,6 +186,19 @@ export function CreateForm({ initial, action, mode }: Props) {
         </Section>
 
         <Section title="Event details">
+          {/* Only for Navratri, and above the fields rather than beside the
+              colours, because picking a night is how a host starts this card
+              — the date and the colour are what fall out of that choice. */}
+          {data.occasion === "navratri" && (
+            <div className="mb-5">
+              <NavratriNights
+                lang={data.lang}
+                date={data.date}
+                today={ist?.date ?? null}
+                onPick={({ date, palette }) => setData((d) => ({ ...d, date, palette }))}
+              />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Event name" required error={errors.title} className="sm:col-span-2">
               <input
@@ -281,46 +312,50 @@ export function CreateForm({ initial, action, mode }: Props) {
         </Section>
 
         <Section title="Design">
-          <p className="mb-2 text-sm text-stone-500">
-            {TEMPLATES.length} designs, shown in your colours. Tap one to try it.
-          </p>
-          {/* Ordered for the chosen occasion, so the most fitting designs come first. */}
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {designs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => set("template", t.id)}
-                className={`overflow-hidden rounded-xl text-left ring-offset-2 transition ${
-                  data.template === t.id ? "ring-3 ring-stone-900" : "ring-1 ring-stone-200 hover:ring-stone-400"
-                }`}
-                aria-pressed={data.template === t.id}
-              >
-                <div className="pointer-events-none">
-                  <InviteCard invite={{ ...data, template: t.id }} placeholders={placeholders} />
+            <p className="mb-2 text-sm text-stone-500">
+              {TEMPLATES.length} designs, shown in your colours. Tap one to try it.
+            </p>
+            {/* Ordered for the chosen occasion, so the most fitting designs come first. */}
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {designs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => set("template", t.id)}
+                  className={`overflow-hidden rounded-xl text-left ring-offset-2 transition ${
+                    data.template === t.id ? "ring-3 ring-stone-900" : "ring-1 ring-stone-200 hover:ring-stone-400"
+                  }`}
+                  aria-pressed={data.template === t.id}
+                >
+                  <div className="pointer-events-none">
+                    <InviteCard invite={{ ...galleryData, template: t.id }} placeholders={placeholders} />
+                  </div>
+                  <span className="block bg-white px-2 py-1.5 text-center text-xs font-semibold">{t.name}</span>
+                </button>
+              ))}
+            </div>
+            {!hidesColourPicker(data.occasion) && (
+              <>
+                <p className="mt-5 mb-2 text-sm font-medium text-stone-600">Colours</p>
+                <div className="flex flex-wrap gap-3">
+                  {palettesFor(data.occasion, data.palette).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => set("palette", p.id)}
+                      title={p.name}
+                      aria-label={p.name}
+                      aria-pressed={data.palette === p.id}
+                      className={`size-11 rounded-full ring-offset-2 transition ${
+                        data.palette === p.id ? "ring-3 ring-stone-900" : "ring-1 ring-stone-300"
+                      }`}
+                      style={{ background: `linear-gradient(135deg, ${p.bg2} 0 50%, ${p.accent} 50% 100%)` }}
+                    />
+                  ))}
                 </div>
-                <span className="block bg-white px-2 py-1.5 text-center text-xs font-semibold">{t.name}</span>
-              </button>
-            ))}
-          </div>
-          <p className="mt-5 mb-2 text-sm font-medium text-stone-600">Colours</p>
-          <div className="flex flex-wrap gap-3">
-            {PALETTES.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => set("palette", p.id)}
-                title={p.name}
-                aria-label={p.name}
-                aria-pressed={data.palette === p.id}
-                className={`size-11 rounded-full ring-offset-2 transition ${
-                  data.palette === p.id ? "ring-3 ring-stone-900" : "ring-1 ring-stone-300"
-                }`}
-                style={{ background: `linear-gradient(135deg, ${p.bg2} 0 50%, ${p.accent} 50% 100%)` }}
-              />
-            ))}
-          </div>
-        </Section>
+              </>
+            )}
+          </Section>
 
         {state?.error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{state.error}</p>}
 

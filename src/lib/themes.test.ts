@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OCCASIONS } from "./occasions";
-import { PALETTE_IDS, TEMPLATES, TEMPLATE_IDS, galleryPalette, getPalette, templatesFor } from "./themes";
+import { PALETTE_IDS, PALETTES, TEMPLATES, TEMPLATE_IDS, galleryPalette, getPalette, palettesFor, templatesFor } from "./themes";
 
 describe("templatesFor", () => {
   it("offers every design for every occasion, just in a different order", () => {
@@ -47,5 +47,44 @@ describe("palettes", () => {
 
   it("keeps template ids in step with the template list", () => {
     expect(TEMPLATE_IDS).toEqual(TEMPLATES.map((t) => t.id));
+  });
+});
+
+describe("palettesFor", () => {
+  const ids = (occasion: string, current?: string) => palettesFor(occasion, current).map((p) => p.id);
+
+  it("offers every colour under Navratri, because each one is a night", () => {
+    expect(ids("navratri")).toEqual(PALETTES.map((p) => p.id));
+  });
+
+  it("keeps the weekday colours out of an ordinary occasion", () => {
+    // Thirteen swatches under a birthday is choice with nothing bought by it.
+    for (const weekdayOnly of ["pearl", "vermilion", "cobalt", "turmeric", "emerald", "slate"]) {
+      expect(ids("birthday"), weekdayOnly).not.toContain(weekdayOnly);
+    }
+    expect(ids("birthday")).toEqual(["rose", "marigold", "mint", "sky", "royal", "peacock", "maroon"]);
+  });
+
+  it("still shows the colour an invite is already in", () => {
+    // A host picks Cobalt for a Navratri card, then switches to a party, or
+    // comes back to edit it next month. Dropping the swatch would leave the
+    // row with nothing selected and look like the choice had been lost.
+    expect(ids("party", "cobalt")).toContain("cobalt");
+    expect(ids("party", "cobalt")).toHaveLength(8);
+  });
+
+  it("does not list the current colour twice", () => {
+    const listed = ids("birthday", "rose");
+    expect(listed.filter((id) => id === "rose")).toHaveLength(1);
+  });
+
+  it("ignores a colour that does not exist", () => {
+    expect(ids("birthday", "chartreuse")).toEqual(ids("birthday"));
+  });
+
+  it("only ever returns real palettes", () => {
+    for (const occasion of ["navratri", "birthday", "pooja"]) {
+      for (const id of ids(occasion)) expect(PALETTE_IDS, occasion).toContain(id);
+    }
   });
 });
