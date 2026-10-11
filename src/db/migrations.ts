@@ -162,4 +162,13 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE invites ADD COLUMN rsvps_cleared_at timestamptz;
     `,
   },
+  {
+    name: "0010_invites_created_at_index",
+    sql: `
+      -- The stats page lists every invite ever made, newest first, a page at
+      -- a time. That is the only query here that walks the whole table, and
+      -- it is the one that grows.
+      CREATE INDEX invites_created_at_idx ON invites (created_at DESC, id DESC);
+    `,
+  },
 ];

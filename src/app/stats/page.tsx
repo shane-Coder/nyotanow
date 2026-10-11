@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { StatsDeleteButton } from "@/components/StatsDeleteButton";
-import { getStats, type Stats } from "@/db/queries";
+import { INVITES_PER_PAGE, getStats, listInvites, type InviteList, type Stats } from "@/db/queries";
 import { getOccasion } from "@/lib/occasions";
 import { agoLabel, fetchSentryIssues, type SentryFeed } from "@/lib/sentry-issues";
 import { STATS_COOKIE, cookieOk } from "@/lib/stats-auth";
@@ -31,12 +31,13 @@ const PLACEMENT_LABELS: Record<string, string> = {
 export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
   // An old ?key= link still works: it is exchanged for a cookie and the key
   // disappears from the address bar.
-  const { key } = await searchParams;
+  const { key, p } = await searchParams;
   if (typeof key === "string" && key !== "") redirect(`/stats/unlock?key=${encodeURIComponent(key)}`);
 
   if (!cookieOk((await cookies()).get(STATS_COOKIE)?.value)) notFound();
 
-  const [s, errors] = await Promise.all([getStats(), fetchSentryIssues()]);
+  const page = Number(typeof p === "string" ? p : "1") || 1;
+  const [s, errors, invites] = await Promise.all([getStats(), fetchSentryIssues(), listInvites(page)]);
   const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
   const trend = s.prev7 === 0 ? (s.last7 > 0 ? "new" : "flat") : `${s.last7 >= s.prev7 ? "+" : ""}${pct(s.last7 - s.prev7, s.prev7)}%`;
 
@@ -139,65 +140,152 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         <Errors feed={errors} />
       </Panel>
 
-      <Panel title="Latest invites">
-        {s.recent.length === 0 ? (
-          <p className="text-stone-500">Nothing yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-stone-500 uppercase">
-                <tr>
-                  <th className="pb-2">Invite</th>
-                  <th className="pb-2">Made</th>
-                  <th className="pb-2 text-right">Views</th>
-                  <th className="pb-2 text-right">RSVPs</th>
-                  <th className="pb-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {s.recent.map((i) => (
-                  <tr key={i.slug}>
-                    <td className="max-w-[220px] truncate py-2 pr-3">
-                      <a href={`/i/${i.slug}`} className="font-medium hover:underline">
-                        {i.title}
-                      </a>
-                      {i.mine && (
-                        <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">
-                          you
-                        </span>
-                      )}
-                      {i.source === "invite" && (
-                        <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
-                          from invite
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3 whitespace-nowrap text-stone-500">
-                      {dateFmt.format(i.createdAt)}
-                      <span className="ml-1.5 text-xs text-stone-400">{timeFmt.format(i.createdAt)}</span>
-                    </td>
-                    <td className="py-2 text-right tabular-nums">{i.views}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {i.rsvps}
-                      {i.rsvps > 0 && (
-                        <span className="ml-1.5 text-xs font-normal text-stone-400">
-                          {[i.yes && `${i.yes} yes`, i.maybe && `${i.maybe} maybe`, i.no && `${i.no} no`]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pl-2 text-right">
-                      <StatsDeleteButton slug={i.slug} title={i.title} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <Panel title={`All invites${invites.total ? ` · ${invites.total}` : ""}`}>
+        <InviteTable list={invites} />
       </Panel>
+
     </main>
+  );
+}
+
+
+/**
+ * Every invite ever made, newest first.
+ *
+ * Paged rather than capped. The old table showed the latest fifteen, which
+ * meant anything older than a fortnight could not be reached from here at
+ * all — and this is the only page that can reach somebody else's invite.
+ *
+ * Both timestamps are shown because they answer different questions. "Made"
+ * is when the host arrived; "edited" is when they came back, which is the
+ * only signal here that an invite is being lived with rather than made once
+ * and forgotten.
+ */
+function InviteTable({ list }: { list: InviteList }) {
+  if (list.total === 0) return <p className="text-stone-500">Nothing yet.</p>;
+
+  const from = (list.page - 1) * INVITES_PER_PAGE + 1;
+
+  return (
+    <>
+      {list.rows.length === 0 ? (
+        <p className="text-stone-500">
+          Nothing on page {list.page}.{" "}
+          <a href="/stats" className="font-semibold underline">
+            Back to the first page
+          </a>
+          .
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-stone-500 uppercase">
+              <tr>
+                <th className="pb-2">Invite</th>
+                <th className="pb-2">Made</th>
+                <th className="pb-2">Edited</th>
+                <th className="pb-2 text-right">Views</th>
+                <th className="pb-2 text-right">RSVPs</th>
+                <th className="pb-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {list.rows.map((i) => (
+                <tr key={i.slug}>
+                  <td className="max-w-[220px] truncate py-2 pr-3">
+                    <a href={`/i/${i.slug}`} className="font-medium hover:underline">
+                      {i.title}
+                    </a>
+                    {i.mine && (
+                      <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">
+                        you
+                      </span>
+                    )}
+                    {i.source === "invite" && (
+                      <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
+                        from invite
+                      </span>
+                    )}
+                    {i.rsvpsClearedAt && (
+                      <span
+                        title={`Guest names deleted on ${dateFmt.format(i.rsvpsClearedAt)}`}
+                        className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-500"
+                      >
+                        names cleared
+                      </span>
+                    )}
+                  </td>
+                  <Stamp at={i.createdAt} />
+                  {/* Equal to created_at until the host edits, so showing it
+                      every time would make a dash the usual reading and the
+                      interesting rows harder to spot, not easier. */}
+                  {i.updatedAt > i.createdAt ? (
+                    <Stamp at={i.updatedAt} />
+                  ) : (
+                    <td className="py-2 pr-3 text-stone-300">—</td>
+                  )}
+                  <td className="py-2 text-right tabular-nums">{i.views}</td>
+                  <td className="py-2 text-right tabular-nums">
+                    {i.rsvps}
+                    {i.rsvps > 0 && (
+                      <span className="ml-1.5 text-xs font-normal text-stone-400">
+                        {[i.yes && `${i.yes} yes`, i.maybe && `${i.maybe} maybe`, i.no && `${i.no} no`]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2 pl-2 text-right">
+                    <StatsDeleteButton slug={i.slug} title={i.title} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {list.pages > 1 && (
+        <nav className="mt-4 flex items-center justify-between gap-3 text-sm" aria-label="Invite pages">
+          {/* Clamped, because a hand-typed ?p=9999 would otherwise offer to
+              go back to page 9998, which is just as empty. */}
+          <Pager to={Math.min(list.page - 1, list.pages)} disabled={list.page <= 1}>
+            ← Newer
+          </Pager>
+          <span className="text-stone-500 tabular-nums">
+            {list.rows.length > 0 && `${from}–${from + list.rows.length - 1} of `}
+            {list.total} · page {list.page} of {list.pages}
+          </span>
+          <Pager to={list.page + 1} disabled={list.page >= list.pages}>
+            Older →
+          </Pager>
+        </nav>
+      )}
+    </>
+  );
+}
+
+/** A date with the time under it, in IST. */
+function Stamp({ at }: { at: Date }) {
+  return (
+    <td className="py-2 pr-3 whitespace-nowrap text-stone-500">
+      {dateFmt.format(at)}
+      <span className="ml-1.5 text-xs text-stone-400">{timeFmt.format(at)}</span>
+    </td>
+  );
+}
+
+/**
+ * Plain links, not buttons. The page is a server component with no state, so
+ * the page number lives in the address — which also means a page of the table
+ * can be bookmarked or reloaded and still be the same page.
+ */
+function Pager({ to, disabled, children }: { to: number; disabled: boolean; children: React.ReactNode }) {
+  if (disabled) return <span className="rounded-full px-3 py-1.5 text-stone-300">{children}</span>;
+  return (
+    <a href={`/stats?p=${to}`} className="rounded-full px-3 py-1.5 font-semibold text-stone-700 hover:bg-stone-100">
+      {children}
+    </a>
   );
 }
 
