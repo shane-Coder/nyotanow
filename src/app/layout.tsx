@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Playfair_Display, Poppins, Tiro_Devanagari_Hindi } from "next/font/google";
+import { StageBanner } from "@/components/StageBanner";
 import { siteUrl } from "@/lib/invite";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${poppins.variable} ${playfair.variable} ${tiro.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
+        <StageBanner />
         {children}
         {/* Cookieless page-view counts (Vercel Web Analytics). */}
         <Analytics />

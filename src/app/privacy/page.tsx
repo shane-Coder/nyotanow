@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { RETENTION_LABEL } from "@/lib/retention";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -10,7 +11,7 @@ const MAIL = "hello@nyotanow.in";
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy" updated="7 October 2026">
+    <LegalPage title="Privacy" updated="11 October 2026">
       <p>
         NyotaNow is run by one person in India. This page says plainly what the site does with information. It is short
         because the site does very little.
@@ -88,9 +89,16 @@ export default function Privacy() {
 
       <h2>How long it is kept</h2>
       <p>
-        Invitations and replies are kept until you ask for them to go. There is no delete button yet — email{" "}
-        <a href={`mailto:${MAIL}`}>{MAIL}</a> with the invitation link and it will be removed, normally within a few
-        days.
+        <strong>Guest replies are deleted {RETENTION_LABEL} after the event.</strong> Names, notes and headcounts go;
+        the invitation itself stays, so you can still open your own card years later. This runs automatically, once a
+        day, and it is counted from the date of the event rather than from the day you made the invitation — a card
+        made in January for a December wedding keeps its guest list all the way through.
+      </p>
+      <p>
+        The invitation is kept until you delete it. There is a <strong>Delete this invite</strong> button at the bottom
+        of your private manage page; it removes the invitation and every reply to it immediately and for good. If you
+        have lost that link, email <a href={`mailto:${MAIL}`}>{MAIL}</a> with the invitation address and it will be
+        removed, normally within a few days.
       </p>
 
       <h2>Asking about your information</h2>

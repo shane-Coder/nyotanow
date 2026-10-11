@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import type { InviteData } from "@/lib/invite";
-import { slugBase } from "@/lib/invite";
+import { EVENT_TZ, slugBase } from "@/lib/invite";
+import { RETENTION_MONTHS } from "@/lib/retention";
 import { getDb } from ".";
 import { footerClicks, invites, rsvps, type InviteRow, type RsvpRow } from "./schema";
 
@@ -154,6 +155,49 @@ export async function deleteInvite(id: string): Promise<void> {
   await db.delete(invites).where(eq(invites.id, id));
 }
 
+export type ClearedGuestLists = { invites: number; replies: number };
+
+/**
+ * Deletes the guest list of every event that finished more than
+ * RETENTION_MONTHS ago, and leaves the invitation standing.
+ *
+ * One statement, so there is no window in which the names are gone but the
+ * stamp saying so has not been written — a crash between the two would leave
+ * a host with an empty list and no explanation for it.
+ *
+ * The cutoff is computed from today in India, not from UTC. An event on the
+ * boundary would otherwise be cleared five and a half hours early or late
+ * depending on where the server happened to be, which is exactly the class of
+ * bug that only shows up in somebody's real wedding.
+ *
+ * Invites with nothing to clear are skipped rather than stamped, so the stamp
+ * means "names were removed from here" and the host-facing notice only
+ * appears where that is true.
+ */
+export async function clearExpiredGuestLists(): Promise<ClearedGuestLists> {
+  const db = await getDb();
+  const [row] = rows<{ invites: number; replies: number }>(
+    await db.execute(sql`
+      WITH due AS (
+        SELECT i.id
+        FROM invites i
+        WHERE i.event_date
+                < ((now() AT TIME ZONE ${EVENT_TZ})::date - ${`${RETENTION_MONTHS} months`}::interval)
+          AND EXISTS (SELECT 1 FROM rsvps r WHERE r.invite_id = i.id)
+      ),
+      gone AS (
+        DELETE FROM rsvps WHERE invite_id IN (SELECT id FROM due) RETURNING 1
+      ),
+      stamped AS (
+        UPDATE invites SET rsvps_cleared_at = now() WHERE id IN (SELECT id FROM due) RETURNING 1
+      )
+      SELECT (SELECT count(*) FROM stamped)::int AS invites,
+             (SELECT count(*) FROM gone)::int    AS replies
+    `),
+  );
+  return { invites: Number(row?.invites ?? 0), replies: Number(row?.replies ?? 0) };
+}
+
 export async function listRsvps(inviteId: string): Promise<RsvpRow[]> {
   const db = await getDb();
   return db.select().from(rsvps).where(eq(rsvps.inviteId, inviteId)).orderBy(desc(rsvps.createdAt));
@@ -242,19 +286,6 @@ export type Stats = {
   byOccasion: { occasion: string; count: number }[];
   byLang: { lang: string; count: number }[];
   byStatus: { status: string; count: number }[];
-  recent: {
-    slug: string;
-    title: string;
-    occasion: string;
-    source: string;
-    mine: boolean;
-    views: number;
-    rsvps: number;
-    yes: number;
-    maybe: number;
-    no: number;
-    createdAt: Date;
-  }[];
 };
 
 /** Everything the private /stats page shows, in one round trip per section. */
@@ -339,34 +370,6 @@ export async function getStats(): Promise<Stats> {
     await db.execute(sql`SELECT status, count(*)::int AS count FROM rsvps GROUP BY status ORDER BY count DESC`),
   );
 
-  const recent = rows<{
-    slug: string;
-    title: string;
-    occasion: string;
-    source: string;
-    mine: boolean;
-    views: number;
-    rsvps: number;
-    yes: number;
-    maybe: number;
-    no: number;
-    created_at: string | Date;
-  }>(
-    await db.execute(sql`
-      SELECT i.slug, i.title, i.occasion, i.source, i.mine, i.view_count::int AS views,
-             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id) AS rsvps,
-             -- Counts, never names. The guest list belongs to the host; this
-             -- page only needs to know whether anyone answered and how.
-             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'yes')   AS yes,
-             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'maybe') AS maybe,
-             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'no')    AS no,
-             i.created_at
-      FROM invites i
-      ORDER BY i.created_at DESC
-      LIMIT 15
-    `),
-  );
-
   return {
     invites: Number(totals?.invites ?? 0),
     invitesFromInvites: Number(totals?.invites_from_invites ?? 0),
@@ -388,7 +391,98 @@ export async function getStats(): Promise<Stats> {
     byOccasion: byOccasion.map((o) => ({ occasion: o.occasion, count: Number(o.count) })),
     byLang: byLang.map((l) => ({ lang: l.lang, count: Number(l.count) })),
     byStatus: byStatus.map((s) => ({ status: s.status, count: Number(s.count) })),
-    recent: recent.map((x) => ({
+  };
+}
+
+/* ------------------------- every invite, a page at a time ------------------------- */
+
+/** How many rows the stats table shows at once. */
+export const INVITES_PER_PAGE = 25;
+// A page size handed in from a query string is still a page size, but it is
+// also the one number here that can make the database do arbitrary work.
+const MAX_PER_PAGE = 200;
+
+export type InviteListRow = {
+  slug: string;
+  title: string;
+  occasion: string;
+  source: string;
+  mine: boolean;
+  views: number;
+  rsvps: number;
+  yes: number;
+  maybe: number;
+  no: number;
+  createdAt: Date;
+  /** Equal to createdAt until the host edits the invite; never earlier. */
+  updatedAt: Date;
+  /** Set once the retention job has removed this invite's guest list. */
+  rsvpsClearedAt: Date | null;
+};
+
+export type InviteList = { rows: InviteListRow[]; total: number; page: number; pages: number };
+
+/**
+ * Every invite ever made, newest first, one page at a time.
+ *
+ * Split out of getStats, which used to return a fixed fifteen. Fifteen was
+ * fine when there were eleven; it quietly became a window that hid everything
+ * older, and the only way to reach an invite from last month was to know its
+ * slug.
+ *
+ * The total comes back from the same query as the rows, through a window
+ * function, because counting the table separately is a second round trip to
+ * answer a question the first one already knew. An out-of-range page has no
+ * rows and therefore no window to read, so that one case pays for a count of
+ * its own rather than reporting zero invites in total.
+ */
+export async function listInvites(page = 1, perPage = INVITES_PER_PAGE): Promise<InviteList> {
+  const db = await getDb();
+  const size = Math.min(MAX_PER_PAGE, Math.max(1, Math.trunc(perPage) || INVITES_PER_PAGE));
+  const wanted = Math.max(1, Math.trunc(page) || 1);
+
+  const list = rows<{
+    slug: string;
+    title: string;
+    occasion: string;
+    source: string;
+    mine: boolean;
+    views: number;
+    rsvps: number;
+    yes: number;
+    maybe: number;
+    no: number;
+    created_at: string | Date;
+    updated_at: string | Date;
+    rsvps_cleared_at: string | Date | null;
+    total: number;
+  }>(
+    await db.execute(sql`
+      SELECT i.slug, i.title, i.occasion, i.source, i.mine, i.view_count::int AS views,
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id) AS rsvps,
+             -- Counts, never names. The guest list belongs to the host; this
+             -- page only needs to know whether anyone answered and how.
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'yes')   AS yes,
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'maybe') AS maybe,
+             (SELECT count(*)::int FROM rsvps s WHERE s.invite_id = i.id AND s.status = 'no')    AS no,
+             i.created_at, i.updated_at, i.rsvps_cleared_at,
+             count(*) OVER ()::int AS total
+      FROM invites i
+      -- id breaks ties, so two invites made in the same millisecond keep a
+      -- fixed order and neither appears on both pages or on neither.
+      ORDER BY i.created_at DESC, i.id DESC
+      LIMIT ${size} OFFSET ${(wanted - 1) * size}
+    `),
+  );
+
+  let total = list.length ? Number(list[0].total) : 0;
+  if (!list.length) {
+    const [count] = rows<{ total: number }>(await db.execute(sql`SELECT count(*)::int AS total FROM invites`));
+    total = Number(count?.total ?? 0);
+  }
+
+  return {
+    rows: list.map((x) => ({
       slug: x.slug,
       title: x.title,
       occasion: x.occasion,
@@ -400,6 +494,11 @@ export async function getStats(): Promise<Stats> {
       maybe: Number(x.maybe),
       no: Number(x.no),
       createdAt: new Date(x.created_at),
+      updatedAt: new Date(x.updated_at),
+      rsvpsClearedAt: x.rsvps_cleared_at ? new Date(x.rsvps_cleared_at) : null,
     })),
+    total,
+    page: wanted,
+    pages: Math.max(1, Math.ceil(total / size)),
   };
 }

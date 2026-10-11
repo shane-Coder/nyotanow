@@ -295,6 +295,9 @@ Any other Postgres works too: set `DATABASE_URL` to its pooled connection string
 - [ ] More languages: Marathi, Gujarati, Tamil, Telugu
 - [ ] Photo gallery on the invite after the event
 
+Where a paid tier might go, and what has to be fixed before any of it can be
+sold: [docs/premium.md](docs/premium.md).
+
 ## Author
 
 **Shivam Omer** — Backend Developer with DevOps expertise

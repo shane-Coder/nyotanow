@@ -39,6 +39,8 @@ export const invites = pgTable("invites", {
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  /** When the retention job removed this invite's guest list. Null until then. */
+  rsvpsClearedAt: timestamp("rsvps_cleared_at", { withTimezone: true }),
 });
 
 export const rsvps = pgTable(

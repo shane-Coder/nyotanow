@@ -147,4 +147,28 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE invite_views  ADD COLUMN mine boolean NOT NULL DEFAULT false;
     `,
   },
+  {
+    name: "0009_rsvps_cleared_at",
+    sql: `
+      -- When this invite's guest list was removed by the retention job.
+      --
+      -- Needed because the removal has to be visible rather than silent. A
+      -- host who comes back to a wedding from last year and finds an empty
+      -- guest list would reasonably assume the site lost it; with this, the
+      -- page can say the names were deleted on purpose and when.
+      --
+      -- Null means nothing has been cleared, which is true of every invite
+      -- today and stays true of any event inside the retention window.
+      ALTER TABLE invites ADD COLUMN rsvps_cleared_at timestamptz;
+    `,
+  },
+  {
+    name: "0010_invites_created_at_index",
+    sql: `
+      -- The stats page lists every invite ever made, newest first, a page at
+      -- a time. That is the only query here that walks the whole table, and
+      -- it is the one that grows.
+      CREATE INDEX invites_created_at_idx ON invites (created_at DESC, id DESC);
+    `,
+  },
 ];

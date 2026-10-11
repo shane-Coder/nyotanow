@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { mapLinkIn, withoutMapLink } from "./map-link";
 import { OCCASION_IDS } from "./occasions";
+import { deploymentUrl, isProduction } from "./stage";
 import { LANGS, PALETTE_IDS, TEMPLATE_IDS, type Lang } from "./themes";
 
 /** Every event is in India for now, so all dates are interpreted as IST. */
@@ -265,7 +266,21 @@ export function slugBase(title: string, fallback: string): string {
   return base.length >= 3 ? base : fallback;
 }
 
+/**
+ * The base address every share link, OG image and sitemap entry is built on.
+ *
+ * Off production, the deployment's own address wins over
+ * NEXT_PUBLIC_SITE_URL. That variable gets set once and copied to every
+ * environment, so without this a test deployment hands out links to
+ * nyotanow.in — an invite made while trying something out would give a guest
+ * a page that exists only on the real site, and the OG image on it would be
+ * fetched from there too.
+ */
 export function siteUrl(): string {
+  if (!isProduction()) {
+    const own = deploymentUrl();
+    if (own) return own;
+  }
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 

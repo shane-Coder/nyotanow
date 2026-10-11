@@ -14,9 +14,11 @@ delete process.env.DATABASE_URL;
 const { sql } = await import("drizzle-orm");
 const { getDb } = await import(".");
 const {
+  clearExpiredGuestLists,
   comingCount,
   findInvite,
   getStats,
+  listInvites,
   hitRateLimit,
   insertInvite,
   keyMatches,
@@ -48,6 +50,15 @@ const invite = (over: Partial<InviteData> = {}): InviteData => ({
   message: "Come along",
   ...over,
 });
+
+/**
+ * One row from the stats listing, found by slug.
+ *
+ * The listing is paged, and these tests add dozens of invites, so a fresh one
+ * is not reliably on page one. A page size past everything the file creates
+ * keeps the assertions about the row rather than about where it sits.
+ */
+const listedRow = async (slug: string) => (await listInvites(1, 200)).rows.find((r) => r.slug === slug)!;
 
 describe("migrations", () => {
   it("bring up a usable schema from nothing", async () => {
@@ -464,16 +475,15 @@ describe("the operator's own rows", () => {
     expect(after.invitesFromInvites - before.invitesFromInvites).toBe(1);
   });
 
-  it("still shows them in the recent list, flagged", async () => {
+  it("still shows them in the invite list, flagged", async () => {
     // He needs to see his own rows; he just needs them not counted.
     const { slug } = await insertInvite(invite({ title: "Flagged one" }), "", true);
-    const row = (await getStats()).recent.find((r) => r.slug === slug)!;
-    expect(row.mine).toBe(true);
+    expect((await listedRow(slug)).mine).toBe(true);
   });
 
   it("defaults to not-mine, so a missed cookie overcounts rather than hides", async () => {
     const { slug } = await insertInvite(invite());
-    expect((await getStats()).recent.find((r) => r.slug === slug)!.mine).toBe(false);
+    expect((await listedRow(slug)).mine).toBe(false);
   });
 });
 
@@ -505,7 +515,7 @@ describe("the 7-day loop window", () => {
     await saveRsvp(row.id, { name: "Meenakshi", status: "yes", guests: 1, note: "" });
     await saveRsvp(row.id, { name: "Rukmini", status: "maybe", guests: 1, note: "" });
     await saveRsvp(row.id, { name: "Vaidyanathan", status: "no", guests: 1, note: "" });
-    const r = (await getStats()).recent.find((x) => x.slug === slug)!;
+    const r = await listedRow(slug);
     expect(r.rsvps).toBe(4);
     expect([r.yes, r.maybe, r.no]).toEqual([2, 1, 1]);
     const serialised = JSON.stringify(r);
@@ -530,5 +540,126 @@ describe("the 7-day loop window", () => {
     const db = await getDb();
     await db.execute(sql`DELETE FROM invites WHERE id = ${row.id}`);
     expect(before.loop7.views - (await getStats()).loop7.views).toBe(1);
+  });
+});
+
+describe("listInvites", () => {
+  it("reaches invites older than the page it starts on", async () => {
+    // The point of the change: before this, anything past the newest fifteen
+    // could not be opened from the stats page at all.
+    const { slug } = await insertInvite(invite({ title: "Buried deep" }));
+    for (let i = 0; i < 4; i++) await insertInvite(invite({ title: `Later ${i}` }));
+
+    const first = await listInvites(1, 2);
+    expect(first.rows.map((r) => r.slug)).not.toContain(slug);
+
+    const slugs: string[] = [];
+    for (let page = 1; page <= first.pages; page++) {
+      slugs.push(...(await listInvites(page, 2)).rows.map((r) => r.slug));
+    }
+    expect(slugs).toContain(slug);
+    // Every invite appears once: no row straddles two pages, none is skipped.
+    expect(new Set(slugs).size).toBe(slugs.length);
+    expect(slugs.length).toBe(first.total);
+  });
+
+  it("reports the whole total, not the size of the page", async () => {
+    const page = await listInvites(1, 1);
+    expect(page.rows).toHaveLength(1);
+    expect(page.total).toBeGreaterThan(1);
+    expect(page.pages).toBe(page.total);
+  });
+
+  it("knows the total even on a page past the end", async () => {
+    // The window function has no row to read there, so this case has to count
+    // separately or the pager would offer to go back to "0 invites".
+    const real = await listInvites(1, 5);
+    const past = await listInvites(9999, 5);
+    expect(past.rows).toHaveLength(0);
+    expect(past.total).toBe(real.total);
+  });
+
+  it("treats junk page numbers as the first page", async () => {
+    for (const given of [0, -3, 1.7, Number.NaN]) {
+      expect((await listInvites(given, 5)).page).toBe(1);
+    }
+  });
+
+  it("shows when an invite was last edited, and not before", async () => {
+    const { slug } = await insertInvite(invite({ title: "Untouched" }));
+    const fresh = await listedRow(slug);
+    // Both default to now() in the same insert, so an unedited invite must
+    // read as unedited rather than as edited the moment it was made.
+    expect(fresh.updatedAt.getTime()).toBe(fresh.createdAt.getTime());
+
+    const row = (await findInvite(slug))!;
+    await updateInvite(row.id, invite({ title: "Untouched", message: "changed" }));
+    const after = await listedRow(slug);
+    expect(after.updatedAt.getTime()).toBeGreaterThan(after.createdAt.getTime());
+  });
+});
+
+describe("the retention job", () => {
+  // Far enough past that no boundary arithmetic can rescue it.
+  const longAgo = "2020-03-01";
+
+  const withGuest = async (date: string) => {
+    const { slug } = await insertInvite(invite({ date }));
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Shanti", status: "yes", guests: 3, note: "coming with the kids" });
+    return { slug, id: row.id };
+  };
+
+  it("deletes the guest list of an old event and keeps the invitation", async () => {
+    const { slug, id } = await withGuest(longAgo);
+    const cleared = await clearExpiredGuestLists();
+
+    expect(cleared.invites).toBeGreaterThanOrEqual(1);
+    expect(await listRsvps(id)).toHaveLength(0);
+    // The card itself is the host's own work and is not ours to remove.
+    const still = await findInvite(slug);
+    expect(still?.title).toBe("Test Party");
+    expect(still?.rsvpsClearedAt).toBeInstanceOf(Date);
+  });
+
+  it("leaves an upcoming event alone", async () => {
+    const { id } = await withGuest("2030-12-25");
+    await clearExpiredGuestLists();
+    expect(await listRsvps(id)).toHaveLength(1);
+  });
+
+  it("leaves an event inside the window alone", async () => {
+    // Yesterday. Measured from the event, so this has barely started its
+    // three months — a date-based cutoff would have taken it already.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { id, slug } = await withGuest(yesterday);
+    await clearExpiredGuestLists();
+    expect(await listRsvps(id)).toHaveLength(1);
+    expect((await findInvite(slug))?.rsvpsClearedAt).toBeNull();
+  });
+
+  it("does not stamp an old invite that never had a reply", async () => {
+    // Otherwise the host-facing notice would claim names were deleted from an
+    // invitation nobody ever answered.
+    const { slug } = await insertInvite(invite({ date: longAgo }));
+    await clearExpiredGuestLists();
+    expect((await findInvite(slug))?.rsvpsClearedAt).toBeNull();
+  });
+
+  it("is safe to run twice", async () => {
+    await withGuest(longAgo);
+    await clearExpiredGuestLists();
+    const second = await clearExpiredGuestLists();
+    // Nothing left to clear, so nothing is re-stamped with a later date.
+    expect(second).toEqual({ invites: 0, replies: 0 });
+  });
+
+  it("counts the replies it removed, not the invites", async () => {
+    const { id } = await withGuest(longAgo);
+    await saveRsvp(id, { name: "Devi", status: "maybe", guests: 1, note: "" });
+    await saveRsvp(id, { name: "Hari", status: "no", guests: 1, note: "" });
+    const cleared = await clearExpiredGuestLists();
+    expect(cleared.replies).toBeGreaterThanOrEqual(3);
+    expect(cleared.replies).toBeGreaterThan(cleared.invites);
   });
 });
