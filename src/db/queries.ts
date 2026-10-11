@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import type { InviteData } from "@/lib/invite";
-import { slugBase } from "@/lib/invite";
+import { EVENT_TZ, slugBase } from "@/lib/invite";
+import { RETENTION_MONTHS } from "@/lib/retention";
 import { getDb } from ".";
 import { footerClicks, invites, rsvps, type InviteRow, type RsvpRow } from "./schema";
 
@@ -153,6 +154,49 @@ export async function deleteInvite(id: string): Promise<void> {
   const db = await getDb();
   await db.delete(invites).where(eq(invites.id, id));
 }
+export type ClearedGuestLists = { invites: number; replies: number };
+
+/**
+ * Deletes the guest list of every event that finished more than
+ * RETENTION_MONTHS ago, and leaves the invitation standing.
+ *
+ * One statement, so there is no window in which the names are gone but the
+ * stamp saying so has not been written — a crash between the two would leave
+ * a host with an empty list and no explanation for it.
+ *
+ * The cutoff is computed from today in India, not from UTC. An event on the
+ * boundary would otherwise be cleared five and a half hours early or late
+ * depending on where the server happened to be, which is exactly the class of
+ * bug that only shows up in somebody's real wedding.
+ *
+ * Invites with nothing to clear are skipped rather than stamped, so the stamp
+ * means "names were removed from here" and the host-facing notice only
+ * appears where that is true.
+ */
+export async function clearExpiredGuestLists(): Promise<ClearedGuestLists> {
+  const db = await getDb();
+  const [row] = rows<{ invites: number; replies: number }>(
+    await db.execute(sql`
+      WITH due AS (
+        SELECT i.id
+        FROM invites i
+        WHERE i.event_date
+                < ((now() AT TIME ZONE ${EVENT_TZ})::date - ${`${RETENTION_MONTHS} months`}::interval)
+          AND EXISTS (SELECT 1 FROM rsvps r WHERE r.invite_id = i.id)
+      ),
+      gone AS (
+        DELETE FROM rsvps WHERE invite_id IN (SELECT id FROM due) RETURNING 1
+      ),
+      stamped AS (
+        UPDATE invites SET rsvps_cleared_at = now() WHERE id IN (SELECT id FROM due) RETURNING 1
+      )
+      SELECT (SELECT count(*) FROM stamped)::int AS invites,
+             (SELECT count(*) FROM gone)::int    AS replies
+    `),
+  );
+  return { invites: Number(row?.invites ?? 0), replies: Number(row?.replies ?? 0) };
+}
+
 
 export async function listRsvps(inviteId: string): Promise<RsvpRow[]> {
   const db = await getDb();

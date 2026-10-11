@@ -9,6 +9,7 @@ import { CopyButton, SaveImageButton, WhatsAppButton } from "@/components/ShareA
 import { SiteHeader } from "@/components/SiteChrome";
 import { findInvite, keyMatches, listRsvps, toInviteData } from "@/db/queries";
 import { formatEventDate, siteUrl, todayInIST, whatsappShareText } from "@/lib/invite";
+import { RETENTION_LABEL } from "@/lib/retention";
 
 export const metadata: Metadata = {
   title: "Manage your invite",
@@ -16,11 +17,19 @@ export const metadata: Metadata = {
 };
 
 const STATUS_LABEL = { yes: "Coming", maybe: "Maybe", no: "Not coming" } as const;
+
 const STATUS_STYLE = {
   yes: "bg-green-100 text-green-800",
   maybe: "bg-amber-100 text-amber-800",
   no: "bg-stone-100 text-stone-600",
 } as const;
+
+const clearedFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
 
 export default async function ManagePage({ params, searchParams }: PageProps<"/i/[slug]/manage">) {
   const { slug } = await params;
@@ -36,6 +45,9 @@ export default async function ManagePage({ params, searchParams }: PageProps<"/i
   const inviteUrl = `${siteUrl()}/i/${slug}`;
   const manageUrl = `${siteUrl()}/i/${slug}/manage?key=${key}`;
   const ended = todayInIST() > invite.date;
+  // Set once the retention job has removed the names. The invitation itself
+  // is still here, which is exactly the distinction the host needs told.
+  const cleared = row.rsvpsClearedAt;
 
   const totals = { yes: 0, maybe: 0, no: 0 };
   for (const r of rsvps) totals[r.status as keyof typeof totals] += r.status === "no" ? 1 : r.guests;
@@ -95,7 +107,8 @@ export default async function ManagePage({ params, searchParams }: PageProps<"/i
           {ended && (
             <div className="rounded-3xl bg-stone-100 p-4 text-sm text-stone-600 ring-1 ring-stone-200">
               This event took place on {formatEventDate(invite.date, "en")}. Guests can still open the invite, but
-              RSVPs are closed. Your guest list is kept below.
+              RSVPs are closed. Your guest list stays here for {RETENTION_LABEL} after the event, then the names are
+              deleted — your invitation stays.
             </div>
           )}
 
@@ -150,7 +163,12 @@ export default async function ManagePage({ params, searchParams }: PageProps<"/i
               </div>
             )}
 
-            {rsvps.length === 0 ? (
+            {cleared ? (
+              <p className="mt-6 rounded-2xl bg-stone-50 p-6 text-center text-sm text-stone-500">
+                Your guests&apos; names and notes were deleted on {clearedFmt.format(cleared)}, {RETENTION_LABEL} after
+                the event. We don&apos;t keep people&apos;s details longer than that. Your invitation is untouched.
+              </p>
+            ) : rsvps.length === 0 ? (
               <p className="mt-6 rounded-2xl bg-stone-50 p-6 text-center text-stone-500">
                 No replies yet. Share the invite and RSVPs will show up here.
               </p>

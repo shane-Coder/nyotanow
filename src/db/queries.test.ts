@@ -14,6 +14,7 @@ delete process.env.DATABASE_URL;
 const { sql } = await import("drizzle-orm");
 const { getDb } = await import(".");
 const {
+  clearExpiredGuestLists,
   comingCount,
   findInvite,
   getStats,
@@ -530,5 +531,70 @@ describe("the 7-day loop window", () => {
     const db = await getDb();
     await db.execute(sql`DELETE FROM invites WHERE id = ${row.id}`);
     expect(before.loop7.views - (await getStats()).loop7.views).toBe(1);
+  });
+});
+
+describe("the retention job", () => {
+  // Far enough past that no boundary arithmetic can rescue it.
+  const longAgo = "2020-03-01";
+
+  const withGuest = async (date: string) => {
+    const { slug } = await insertInvite(invite({ date }));
+    const row = (await findInvite(slug))!;
+    await saveRsvp(row.id, { name: "Shanti", status: "yes", guests: 3, note: "coming with the kids" });
+    return { slug, id: row.id };
+  };
+
+  it("deletes the guest list of an old event and keeps the invitation", async () => {
+    const { slug, id } = await withGuest(longAgo);
+    const cleared = await clearExpiredGuestLists();
+
+    expect(cleared.invites).toBeGreaterThanOrEqual(1);
+    expect(await listRsvps(id)).toHaveLength(0);
+    // The card itself is the host's own work and is not ours to remove.
+    const still = await findInvite(slug);
+    expect(still?.title).toBe("Test Party");
+    expect(still?.rsvpsClearedAt).toBeInstanceOf(Date);
+  });
+
+  it("leaves an upcoming event alone", async () => {
+    const { id } = await withGuest("2030-12-25");
+    await clearExpiredGuestLists();
+    expect(await listRsvps(id)).toHaveLength(1);
+  });
+
+  it("leaves an event inside the window alone", async () => {
+    // Yesterday. Measured from the event, so this has barely started its
+    // three months — a date-based cutoff would have taken it already.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { id, slug } = await withGuest(yesterday);
+    await clearExpiredGuestLists();
+    expect(await listRsvps(id)).toHaveLength(1);
+    expect((await findInvite(slug))?.rsvpsClearedAt).toBeNull();
+  });
+
+  it("does not stamp an old invite that never had a reply", async () => {
+    // Otherwise the host-facing notice would claim names were deleted from an
+    // invitation nobody ever answered.
+    const { slug } = await insertInvite(invite({ date: longAgo }));
+    await clearExpiredGuestLists();
+    expect((await findInvite(slug))?.rsvpsClearedAt).toBeNull();
+  });
+
+  it("is safe to run twice", async () => {
+    await withGuest(longAgo);
+    await clearExpiredGuestLists();
+    const second = await clearExpiredGuestLists();
+    // Nothing left to clear, so nothing is re-stamped with a later date.
+    expect(second).toEqual({ invites: 0, replies: 0 });
+  });
+
+  it("counts the replies it removed, not the invites", async () => {
+    const { id } = await withGuest(longAgo);
+    await saveRsvp(id, { name: "Devi", status: "maybe", guests: 1, note: "" });
+    await saveRsvp(id, { name: "Hari", status: "no", guests: 1, note: "" });
+    const cleared = await clearExpiredGuestLists();
+    expect(cleared.replies).toBeGreaterThanOrEqual(3);
+    expect(cleared.replies).toBeGreaterThan(cleared.invites);
   });
 });
