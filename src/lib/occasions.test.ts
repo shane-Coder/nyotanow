@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OCCASIONS, getOccasion, sentenceName } from "./occasions";
+import { OCCASIONS, getOccasion, hidesDesignPicker, sentenceName } from "./occasions";
 import { PALETTE_IDS, TEMPLATE_IDS } from "./themes";
 
 describe("the occasion list", () => {
@@ -58,5 +58,17 @@ describe("the Navratri occasion", () => {
     // family name, and that is the wrong word on this card.
     expect(navratri.hostPlaceholder.en).toContain("Samiti");
     expect(navratri.hostPlaceholder.hi).toContain("समिति");
+  });
+});
+
+describe("hidesDesignPicker", () => {
+  it("hides the picker for Navratri, where the night decides the look", () => {
+    expect(hidesDesignPicker("navratri")).toBe(true);
+  });
+
+  it("leaves every other occasion its designs and colours", () => {
+    for (const o of OCCASIONS.filter((x) => x.id !== "navratri")) {
+      expect(hidesDesignPicker(o.id), o.id).toBe(false);
+    }
   });
 });

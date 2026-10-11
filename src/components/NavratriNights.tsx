@@ -60,7 +60,11 @@ export function NavratriNights({ lang, date, today, onPick }: Props) {
 
   return (
     <Frame lang={lang}>
-      <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+      {/* One per row on a phone. "Brahmacharini" and "Chandraghanta" do not
+          fit two to a 375px screen, and these chips are the main control on
+          this page now — a clipped goddess is not a trade worth making for
+          a shorter scroll. */}
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {nights.map((n, i) => {
           const palette = getPalette(n.palette);
           const chosen = date === n.date;
@@ -81,7 +85,7 @@ export function NavratriNights({ lang, date, today, onPick }: Props) {
                 style={{ background: `linear-gradient(135deg, ${palette.bg2} 0 50%, ${palette.accent} 50% 100%)` }}
               />
               <span className="min-w-0">
-                <span className="block text-sm leading-tight font-semibold text-stone-800">
+                <span className="block text-sm leading-tight font-semibold break-words text-stone-800">
                   {lang === "hi" ? n.devi.hi : n.devi.en}
                 </span>
                 <span className="block whitespace-nowrap text-xs text-stone-500">
@@ -99,9 +103,29 @@ export function NavratriNights({ lang, date, today, onPick }: Props) {
   );
 }
 
+/**
+ * The Sarva Mangala Mangalye shloka from the Devi Mahatmya, the invocation
+ * most people reciting anything at Navratri will recite.
+ *
+ * Left in Devanagari whichever language the card is in. It is Sanskrit, not
+ * Hindi or English, and a transliteration of a shloka is a worse thing to
+ * put in front of someone than a script they may read slowly. Set in Tiro,
+ * the serif the Hindi cards already use.
+ */
+function Mantra() {
+  return (
+    <p className="mb-3 border-b border-amber-200/80 pb-3 text-center font-hindi text-[15px] leading-7 text-amber-900/85">
+      सर्वमंगल मांगल्ये शिवे सर्वार्थ साधिके।
+      <br />
+      शरण्ये त्र्यंबके गौरी नारायणि नमोऽस्तुते।।
+    </p>
+  );
+}
+
 function Frame({ lang, children }: { lang: Lang; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-amber-50/60 p-4 ring-1 ring-amber-200/70">
+      <Mantra />
       <p className="mb-1 text-sm font-semibold text-stone-800">
         {lang === "hi" ? "नवरात्रि के नौ दिन" : "The nine nights"}
       </p>

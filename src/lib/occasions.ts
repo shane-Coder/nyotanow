@@ -152,3 +152,18 @@ export function getOccasion(id: string): Occasion | undefined {
 export function sentenceName(o: Occasion): string {
   return o.lowerName ?? o.name.en.toLowerCase();
 }
+
+/**
+ * Occasions that make their own design choices, so the picker is hidden.
+ *
+ * Navratri's nine nights already settle the colour — the night is the
+ * choice, and a colour row beside it could only contradict it. The designs
+ * go with it: the form is then one decision long, which is the right shape
+ * for a puja committee filling this in on a phone.
+ *
+ * The cost is real and worth naming: a Navratri card stays on Mehrab. If
+ * that starts to chafe, show the designs again and keep the colours hidden.
+ */
+export function hidesDesignPicker(occasion: string): boolean {
+  return occasion === "navratri";
+}
