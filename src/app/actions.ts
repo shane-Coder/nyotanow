@@ -91,6 +91,17 @@ export async function updateInviteAction(
 
   const parsed = parseInvite(formData);
   if (!parsed.success) return invalid(parsed.error);
+  // The same cap the create path has. Editing deliberately allows a date in
+  // the past — a host tidying up details after the event is a real thing, and
+  // the form only sets min= when creating. The far side is not deliberate: we
+  // closed the year-8978 door on create and left this one open, and the form
+  // here does set max=, so the server was simply out of step with its own UI.
+  if (isTooFarAhead(parsed.data.date, todayInIST())) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { date: [`That is too far ahead. Pick a date within ${MAX_YEARS_AHEAD} years.`] },
+    };
+  }
 
   try {
     await updateInvite(invite.id, parsed.data);
