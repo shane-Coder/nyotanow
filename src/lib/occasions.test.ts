@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OCCASIONS, getOccasion, hidesDesignPicker, sentenceName } from "./occasions";
+import { OCCASIONS, getOccasion, hidesColourPicker, sentenceName } from "./occasions";
 import { PALETTE_IDS, TEMPLATE_IDS } from "./themes";
 
 describe("the occasion list", () => {
@@ -61,14 +61,14 @@ describe("the Navratri occasion", () => {
   });
 });
 
-describe("hidesDesignPicker", () => {
-  it("hides the picker for Navratri, where the night decides the look", () => {
-    expect(hidesDesignPicker("navratri")).toBe(true);
+describe("hidesColourPicker", () => {
+  it("hides the swatches for Navratri, where the night decides the colour", () => {
+    expect(hidesColourPicker("navratri")).toBe(true);
   });
 
-  it("leaves every other occasion its designs and colours", () => {
+  it("leaves every other occasion its colours", () => {
     for (const o of OCCASIONS.filter((x) => x.id !== "navratri")) {
-      expect(hidesDesignPicker(o.id), o.id).toBe(false);
+      expect(hidesColourPicker(o.id), o.id).toBe(false);
     }
   });
 });

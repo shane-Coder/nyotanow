@@ -154,16 +154,13 @@ export function sentenceName(o: Occasion): string {
 }
 
 /**
- * Occasions that make their own design choices, so the picker is hidden.
+ * Occasions that choose their own colour, so the colour row is hidden.
  *
- * Navratri's nine nights already settle the colour — the night is the
- * choice, and a colour row beside it could only contradict it. The designs
- * go with it: the form is then one decision long, which is the right shape
- * for a puja committee filling this in on a phone.
- *
- * The cost is real and worth naming: a Navratri card stays on Mehrab. If
- * that starts to chafe, show the designs again and keep the colours hidden.
+ * Navratri's nine nights already settle it — the night is the choice, and a
+ * row of swatches beside them could only disagree with them. The designs
+ * stay: which of the seven a pandal card wears is a real decision and
+ * nothing else on the page makes it.
  */
-export function hidesDesignPicker(occasion: string): boolean {
+export function hidesColourPicker(occasion: string): boolean {
   return occasion === "navratri";
 }

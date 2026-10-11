@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { InviteData } from "@/lib/invite";
 import { eventDayParts, formatEventDate, formatEventTime } from "@/lib/invite";
 import { withoutMapLink } from "@/lib/map-link";
+import { DURGA_SHLOKA } from "@/lib/navratri";
 import { getOccasion } from "@/lib/occasions";
 import { getPalette } from "@/lib/themes";
 
@@ -31,7 +32,28 @@ type Resolved = {
   dark: boolean;
   /** Display-font class for this card's language. */
   serif: string;
+  /** The invocation carried above the kicker, on Navratri cards only. */
+  shloka: readonly [string, string] | null;
 };
+
+/**
+ * The shloka above the kicker, on Navratri cards.
+ *
+ * Always Devanagari, whatever the card's language, and always in Tiro —
+ * every template already loads it for the Hindi cards. Small and at reduced
+ * weight on purpose: it is the line a printed pandal card carries above
+ * everything, not something that should compete with the event's name.
+ */
+function Shloka({ r }: { r: Resolved }) {
+  if (!r.shloka) return null;
+  return (
+    <p className="mb-[1.5cqw] font-hindi text-[2.5cqw] leading-[1.7] text-balance opacity-75">
+      {r.shloka[0]}
+      <br />
+      {r.shloka[1]}
+    </p>
+  );
+}
 
 function Faded({ children }: { children: ReactNode }) {
   return <span className="opacity-45">{children}</span>;
@@ -58,6 +80,7 @@ function resolve(invite: InviteData, dark: boolean, placeholders: Props["placeho
     hi,
     dark,
     serif: hi ? "font-hindi" : "font-serif",
+    shloka: invite.occasion === "navratri" ? DURGA_SHLOKA : null,
   };
 }
 
@@ -109,6 +132,7 @@ function Classic({ r }: { r: Resolved }) {
       ))}
 
       <div className="relative flex h-full flex-col justify-center px-[13cqw] text-center">
+        <Shloka r={r} />
         <p
           className={`text-[var(--accent)] ${r.hi ? "text-[3.6cqw] font-semibold" : "text-[2.8cqw] font-semibold uppercase tracking-[0.3em]"}`}
         >
@@ -205,6 +229,7 @@ function Confetti({ r }: { r: Resolved }) {
         <div className={`flex size-[20cqw] items-center justify-center self-center rounded-full ${r.dark ? "bg-white/90" : "bg-white/70"} text-[11cqw] shadow-[0_1cqw_3cqw_rgba(0,0,0,0.12)]`}>
           {r.emoji}
         </div>
+        <Shloka r={r} />
         <p className={`mt-[4cqw] max-w-full self-center truncate rounded-full bg-[var(--accent)] px-[3.5cqw] py-[1cqw] text-[3.1cqw] font-semibold ${r.dark ? "text-[var(--bg)]" : "text-white"}`}>
           {r.kicker}
         </p>
@@ -237,6 +262,7 @@ function Shubh({ r }: { r: Resolved }) {
 
       <div className="relative flex h-full flex-col justify-center px-[12cqw] pt-[6cqw] text-center">
         <Mandala className="size-[15cqw] shrink-0 self-center text-[var(--accent)]" />
+        <Shloka r={r} />
         <p className={`mt-[2.5cqw] text-[var(--accent)] ${r.hi ? "text-[3.8cqw]" : "text-[3.2cqw] italic font-serif"}`}>
           {r.kicker}
         </p>
@@ -312,6 +338,7 @@ function Botanical({ r }: { r: Resolved }) {
         {/* In the flow rather than absolutely placed, so it can never sit on top
             of a long title the way an overlay would. */}
         <Wreath className="size-[17cqw] shrink-0 self-center text-[var(--accent)]" />
+        <Shloka r={r} />
         <p className={`mt-[2cqw] text-[var(--accent)] ${r.hi ? "text-[3.5cqw]" : "font-serif text-[3cqw] italic"}`}>
           {r.kicker}
         </p>
@@ -396,6 +423,7 @@ function Minimal({ r }: { r: Resolved }) {
       <span className="absolute top-0 left-0 h-full w-[2.2cqw] bg-[var(--accent)]" />
 
       <div className="relative flex h-full flex-col justify-center pr-[11cqw] pl-[14cqw] text-left">
+        <Shloka r={r} />
         <p
           className={`text-[var(--accent)] ${r.hi ? "text-[3.4cqw] font-semibold" : "text-[2.6cqw] font-semibold uppercase tracking-[0.34em]"}`}
         >
@@ -438,6 +466,7 @@ function Poster({ r }: { r: Resolved }) {
 
       <div className="relative flex h-full flex-col justify-between px-[9cqw] pt-[7cqw] pb-[8cqw]">
         <div className={`text-left ${r.dark ? "text-[var(--bg)]" : "text-white"}`}>
+          <Shloka r={r} />
           <p className="text-[3cqw] font-bold uppercase tracking-[0.3em] opacity-90">{r.kicker}</p>
           {/* Before a date is picked the numeral would leave the block empty,
               so the occasion's emoji stands in. */}
@@ -484,6 +513,7 @@ function Mehrab({ r }: { r: Resolved }) {
 
       <div className="relative flex h-full flex-col justify-center px-[15cqw] text-center">
         <p className="text-[4.5cqw] leading-none">{r.emoji}</p>
+        <Shloka r={r} />
         <p
           className={`mt-[2cqw] text-[var(--accent)] ${r.hi ? "text-[3.6cqw]" : "text-[2.9cqw] font-semibold uppercase tracking-[0.24em]"}`}
         >

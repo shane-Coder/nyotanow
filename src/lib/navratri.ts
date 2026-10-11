@@ -69,6 +69,20 @@ export const NAVADURGA = [
 export type Devi = (typeof NAVADURGA)[number];
 
 /**
+ * The Sarva Mangala Mangalye shloka from the Devi Mahatmya, in its two
+ * lines, which is the invocation most people reciting anything at Navratri
+ * will recite.
+ *
+ * Kept in Devanagari wherever it is shown, whatever language the card is
+ * in. It is Sanskrit, not Hindi or English, and a romanised shloka reads
+ * worse to the people who know it than a script someone else reads slowly.
+ */
+export const DURGA_SHLOKA = [
+  "सर्वमंगल मांगल्ये शिवे सर्वार्थ साधिके।",
+  "शरण्ये त्र्यंबके गौरी नारायणि नमोऽस्तुते।।",
+] as const;
+
+/**
  * The colour each weekday carries, from the planet that rules it — Sunday's
  * Surya is orange, Monday's Chandra white, and so on. Indexed to match
  * Date#getUTCDay(), so Sunday is first.

@@ -1,6 +1,6 @@
 "use client";
 
-import { NAVADURGA, currentOrNextFestival, navratriDays, nightOn } from "@/lib/navratri";
+import { DURGA_SHLOKA, NAVADURGA, currentOrNextFestival, navratriDays, nightOn } from "@/lib/navratri";
 import { getPalette, type Lang, type PaletteId } from "@/lib/themes";
 
 /**
@@ -115,9 +115,9 @@ export function NavratriNights({ lang, date, today, onPick }: Props) {
 function Mantra() {
   return (
     <p className="mb-3 border-b border-amber-200/80 pb-3 text-center font-hindi text-[15px] leading-7 text-amber-900/85">
-      सर्वमंगल मांगल्ये शिवे सर्वार्थ साधिके।
+      {DURGA_SHLOKA[0]}
       <br />
-      शरण्ये त्र्यंबके गौरी नारायणि नमोऽस्तुते।।
+      {DURGA_SHLOKA[1]}
     </p>
   );
 }
