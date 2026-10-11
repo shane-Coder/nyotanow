@@ -8,6 +8,7 @@ import { clampToFuture, isPastEventAt, maxEventDate, type InviteData } from "@/l
 import { OCCASIONS, getOccasion } from "@/lib/occasions";
 import { PALETTES, TEMPLATES, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
+import { NavratriNights } from "./NavratriNights";
 import { VenueField } from "./VenueField";
 
 type Props = {
@@ -168,6 +169,19 @@ export function CreateForm({ initial, action, mode }: Props) {
         </Section>
 
         <Section title="Event details">
+          {/* Only for Navratri, and above the fields rather than beside the
+              colours, because picking a night is how a host starts this card
+              — the date and the colour are what fall out of that choice. */}
+          {data.occasion === "navratri" && (
+            <div className="mb-5">
+              <NavratriNights
+                lang={data.lang}
+                date={data.date}
+                today={ist?.date ?? null}
+                onPick={({ date, palette }) => setData((d) => ({ ...d, date, palette }))}
+              />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Event name" required error={errors.title} className="sm:col-span-2">
               <input
