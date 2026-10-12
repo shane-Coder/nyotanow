@@ -87,6 +87,30 @@ export function toSuggestions(payload: unknown): PlaceSuggestion[] {
 }
 
 /**
+ * What the address field should hold once a suggestion has been chosen.
+ *
+ * An address the host wrote themselves outranks a suggestion's: they know
+ * their own landmark better than any index does. An address a *previous
+ * suggestion* put there does not, and that is the distinction this exists to
+ * make. Without it the first pick wins forever: a host who picks a temple in
+ * Banda, changes their mind and picks one in Dehradun ends up with a card
+ * naming the Dehradun venue above the Banda address, while the Directions
+ * button points at Dehradun. The guest reads the card, not the button.
+ *
+ * `fromSuggestion` comes back so the caller can remember, for next time,
+ * whether what is now in the field is the host's or ours.
+ */
+export function addressAfterPick(
+  current: string,
+  fromSuggestion: boolean,
+  picked: string,
+): { address: string; fromSuggestion: boolean } {
+  const theirs = Boolean(current) && !fromSuggestion;
+  if (theirs) return { address: current, fromSuggestion: false };
+  return { address: picked, fromSuggestion: Boolean(picked) };
+}
+
+/**
  * Suggestions for what the host has typed so far, or an empty list.
  *
  * Never throws and never rejects. A provider that is down, slow, out of quota
