@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { isPhoneAgent, whatsappShareUrl } from "@/lib/invite";
 
 const EXPORT_WIDTH = 1080; // Instagram / WhatsApp status friendly.
+
+// The user agent does not change under us, so there is nothing to subscribe
+// to; this exists only to satisfy the store contract.
+const neverChanges = () => () => {};
 
 async function renderCardPng(cardId: string): Promise<Blob> {
   const card = document.getElementById(cardId);
@@ -76,22 +80,20 @@ export function SaveImageButton({
 }
 
 export function WhatsAppButton({ text, className, label = "Share on WhatsApp" }: { text: string; className?: string; label?: string }) {
-  // Which WhatsApp to open can only be known in the browser, so it is decided
-  // at the click rather than at render. The href holds the phone link, which
-  // is both the right answer for most people and a working fallback without
-  // JavaScript. See whatsappShareUrl for why a desktop needs the other one.
+  // Which WhatsApp to open can only be known in the browser. Deciding it in a
+  // click handler left the href itself wrong, so a middle-click or a "copy
+  // link address" still took the desktop down the path that eats the emoji.
+  // This puts the right answer in the href instead: the server renders the
+  // phone link, which is correct for most people and works without
+  // JavaScript, and React re-renders with the real answer after hydration.
+  const onPhone = useSyncExternalStore(
+    neverChanges,
+    () => isPhoneAgent(navigator.userAgent, navigator.maxTouchPoints),
+    () => true,
+  );
+
   return (
-    <a
-      href={whatsappShareUrl(text, true)}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={className}
-      onClick={(e) => {
-        if (isPhoneAgent(navigator.userAgent, navigator.maxTouchPoints)) return;
-        e.preventDefault();
-        window.open(whatsappShareUrl(text, false), "_blank", "noopener,noreferrer");
-      }}
-    >
+    <a href={whatsappShareUrl(text, onPhone)} target="_blank" rel="noopener noreferrer" className={className}>
       <WhatsAppIcon /> {label}
     </a>
   );
