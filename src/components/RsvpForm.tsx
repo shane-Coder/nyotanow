@@ -93,7 +93,7 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
       <input type="hidden" name="status" value={status} />
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-600">{t.yourName}</span>
+        <span className="mb-1 block text-sm font-semibold text-stone-600">{t.yourName}</span>
         <input
           name="name"
           required
@@ -106,7 +106,7 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
 
       {status !== "no" && (
         <div>
-          <span className="mb-1 block text-sm font-medium text-stone-600">{t.guests}</span>
+          <span className="mb-1 block text-sm font-semibold text-stone-600">{t.guests}</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -131,7 +131,7 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
       <input type="hidden" name="guests" value={status === "no" ? 1 : guests} />
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-600">{t.note}</span>
+        <span className="mb-1 block text-sm font-semibold text-stone-600">{t.note}</span>
         <textarea
           name="note"
           defaultValue={saved?.note}
@@ -144,7 +144,7 @@ export function RsvpForm({ slug, lang, accent }: { slug: string; lang: Lang; acc
       {/* Honeypot for bots; hidden from people and screen readers. */}
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-0 w-0" />
 
-      {state && !state.ok && <p className="text-sm font-medium text-red-600">{state.error}</p>}
+      {state && !state.ok && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
 
       <button
         type="submit"

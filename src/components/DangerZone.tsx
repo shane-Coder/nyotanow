@@ -38,7 +38,7 @@ export function DangerZone({ slug, editKey, title }: { slug: string; editKey: st
         cannot be undone.
       </p>
       <label className="mt-3 block">
-        <span className="text-xs font-medium text-red-900/80">Type DELETE to confirm</span>
+        <span className="text-xs font-semibold text-red-900/80">Type DELETE to confirm</span>
         <input
           type="text"
           value={typed}
@@ -47,7 +47,7 @@ export function DangerZone({ slug, editKey, title }: { slug: string; editKey: st
           className="mt-1 w-full rounded-xl border border-red-300 bg-white px-3 py-2 text-base outline-none focus:border-red-500"
         />
       </label>
-      {error && <p className="mt-2 text-sm font-medium text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm font-semibold text-red-700">{error}</p>}
       <div className="mt-3 flex gap-2">
         <button
           type="button"

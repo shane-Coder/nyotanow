@@ -85,7 +85,7 @@ function InviteRow({ invite, ended }: { invite: Saved; ended: boolean }) {
   return (
     <li className="flex items-center justify-between gap-3 py-3">
       <div className={`min-w-0 ${ended ? "opacity-60" : ""}`}>
-        <p className={`truncate font-medium ${ended ? "text-stone-500 line-through decoration-stone-400" : ""}`}>
+        <p className={`truncate font-semibold ${ended ? "text-stone-500 line-through decoration-stone-400" : ""}`}>
           {invite.title}
         </p>
         {invite.date && (

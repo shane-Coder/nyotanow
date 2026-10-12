@@ -348,7 +348,7 @@ export function CreateForm({ initial, action, mode }: Props) {
             </div>
             {!hidesColourPicker(data.occasion) && (
               <>
-                <p className="mt-5 mb-2 text-sm font-medium text-stone-600">Colours</p>
+                <p className="mt-5 mb-2 text-sm font-semibold text-stone-600">Colours</p>
                 <div className="flex flex-wrap gap-3">
                   {palettesFor(data.occasion, data.palette).map((p) => (
                     <button
@@ -369,7 +369,7 @@ export function CreateForm({ initial, action, mode }: Props) {
             )}
           </Section>
 
-        {state?.error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{state.error}</p>}
+        {state?.error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{state.error}</p>}
 
         {/* Sticky on mobile so the main action is always one tap away. */}
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
@@ -424,7 +424,7 @@ function Field({
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-sm font-medium text-stone-700">
+      <span className="mb-1.5 block text-sm font-semibold text-stone-700">
         {label} {required && <span className="text-[var(--brand)]">*</span>}
       </span>
       {children}
