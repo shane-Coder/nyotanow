@@ -19,8 +19,25 @@ import "./globals.css";
 // in, and 800 was three card titles that read as bold at 700.
 const poppins = Poppins({
   variable: "--font-poppins",
-  subsets: ["latin", "devanagari"],
+  subsets: ["latin"],
   weight: ["400", "600", "700"],
+});
+
+// The same face again for Devanagari, as its own instance so it can be left
+// out of the preload. One Poppins covering both subsets preloaded all six
+// files, and the three Devanagari ones are 114KB that an English invite
+// never draws. Split, the Latin half is still preloaded for first paint and
+// the Devanagari half arrives when there is Devanagari to draw.
+//
+// Hindi sans text reaches it by per-glyph fallback through --font-sans. The
+// PNG export is the thing to watch there, and a Hindi Confetti card — title
+// in sans, the case most at risk — was exported before and after this split
+// and came out identical.
+const poppinsDevanagari = Poppins({
+  variable: "--font-poppins-devanagari",
+  subsets: ["devanagari"],
+  weight: ["400", "600", "700"],
+  preload: false,
 });
 
 const playfair = Playfair_Display({
@@ -30,11 +47,20 @@ const playfair = Playfair_Display({
 });
 
 // Playfair has no Devanagari; the serif stack falls back to Tiro for Hindi.
+//
+// Not preloaded. Tiro is only ever painted on a Hindi card — Playfair covers
+// the Latin serif, and the Hindi UI runs on Poppins — yet preloading fetched
+// all four files on every page, 167KB that an English invite never shows.
+// Without the preload tag the @font-face unicode-range does its job: the
+// files arrive when a Devanagari glyph is actually drawn in this face, and
+// not before. The cost is that a Hindi card paints in the fallback serif for
+// the moment it takes to arrive, which is a trade worth making on a phone.
 const tiro = Tiro_Devanagari_Hindi({
   variable: "--font-tiro",
   subsets: ["latin", "devanagari"],
   weight: "400",
   style: ["normal", "italic"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -54,7 +80,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${poppins.variable} ${playfair.variable} ${tiro.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${poppins.variable} ${poppinsDevanagari.variable} ${playfair.variable} ${tiro.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col font-sans">
         <StageBanner />
         {children}
