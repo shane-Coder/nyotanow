@@ -299,3 +299,33 @@ export function shareMessage(invite: InviteData): string {
 export function whatsappShareText(invite: InviteData, url: string): string {
   return `${shareMessage(invite)}\n${url}`;
 }
+
+/**
+ * Whether this is a phone, which decides which WhatsApp to open.
+ *
+ * iPadOS reports a Mac user agent, so the touch points are what give it away.
+ */
+export function isPhoneAgent(ua: string, touchPoints = 0): boolean {
+  if (/Android|iPhone|iPad|iPod/i.test(ua)) return true;
+  return /Macintosh/.test(ua) && touchPoints > 1;
+}
+
+/**
+ * Where "Share on WhatsApp" should point.
+ *
+ * wa.me is right on a phone: it opens the app with the message ready.
+ *
+ * On a desktop it is not. wa.me hands off through the whatsapp:// protocol
+ * handler, and Windows passes that URI to the app as a command line — a
+ * boundary that read our 4-byte UTF-8 as single-byte ANSI, so every emoji
+ * arrived as U+FFFD. Devanagari is 3-byte and came through untouched, which
+ * is what made the breakage look arbitrary: a guest saw a perfect Hindi
+ * invitation with four question marks punched through it.
+ *
+ * web.whatsapp.com never leaves the browser, so the text stays UTF-8 the
+ * whole way. Confirmed by sending the same bytes to both and comparing.
+ */
+export function whatsappShareUrl(text: string, onPhone: boolean): string {
+  const base = onPhone ? "https://wa.me/?text=" : "https://web.whatsapp.com/send?text=";
+  return `${base}${encodeURIComponent(text)}`;
+}

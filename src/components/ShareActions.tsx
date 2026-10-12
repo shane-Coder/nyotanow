@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isPhoneAgent, whatsappShareUrl } from "@/lib/invite";
 
 const EXPORT_WIDTH = 1080; // Instagram / WhatsApp status friendly.
 
@@ -75,12 +76,21 @@ export function SaveImageButton({
 }
 
 export function WhatsAppButton({ text, className, label = "Share on WhatsApp" }: { text: string; className?: string; label?: string }) {
+  // Which WhatsApp to open can only be known in the browser, so it is decided
+  // at the click rather than at render. The href holds the phone link, which
+  // is both the right answer for most people and a working fallback without
+  // JavaScript. See whatsappShareUrl for why a desktop needs the other one.
   return (
     <a
-      href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+      href={whatsappShareUrl(text, true)}
       target="_blank"
       rel="noopener noreferrer"
       className={className}
+      onClick={(e) => {
+        if (isPhoneAgent(navigator.userAgent, navigator.maxTouchPoints)) return;
+        e.preventDefault();
+        window.open(whatsappShareUrl(text, false), "_blank", "noopener,noreferrer");
+      }}
     >
       <WhatsAppIcon /> {label}
     </a>

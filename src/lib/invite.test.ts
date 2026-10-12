@@ -14,6 +14,7 @@ import {
   formatEventTime,
   googleCalendarUrl,
   inviteSchema,
+  isPhoneAgent,
   mapsUrl,
   rsvpSchema,
   rsvpStorageKey,
@@ -21,6 +22,7 @@ import {
   slugBase,
   timeNowInIST,
   todayInIST,
+  whatsappShareUrl,
   type InviteData,
 } from "./invite";
 
@@ -272,6 +274,49 @@ describe("shareMessage", () => {
 
   it("writes it in English otherwise", () => {
     expect(shareMessage(base)).toContain("You're invited!");
+  });
+});
+
+describe("where the WhatsApp share link points", () => {
+  // The bug this guards: a guest received the Hindi invitation intact with
+  // every emoji replaced by U+FFFD, because wa.me reaches the desktop app
+  // through the OS and the emoji did not survive the trip.
+  const text = shareMessage(base);
+
+  it("opens the app directly from a phone", () => {
+    expect(whatsappShareUrl(text, true)).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  });
+
+  it("stays in the browser on a desktop", () => {
+    expect(whatsappShareUrl(text, false)).toMatch(/^https:\/\/web\.whatsapp\.com\/send\?text=/);
+  });
+
+  it("carries the same message either way, emoji and all", () => {
+    for (const onPhone of [true, false]) {
+      const sent = new URL(whatsappShareUrl(text, onPhone)).searchParams.get("text");
+      expect(sent).toBe(text);
+      expect(sent).toContain("🎉");
+      expect(sent).not.toContain("�");
+    }
+  });
+});
+
+describe("isPhoneAgent", () => {
+  const ipad = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/604.1";
+
+  it("knows a phone", () => {
+    expect(isPhoneAgent("Mozilla/5.0 (Linux; Android 14; SM-G991B) Chrome/120")).toBe(true);
+    expect(isPhoneAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1")).toBe(true);
+  });
+
+  it("knows a desktop", () => {
+    expect(isPhoneAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120")).toBe(false);
+    expect(isPhoneAgent(ipad, 0)).toBe(false);
+  });
+
+  // iPadOS claims to be a Mac, and only the touch points disagree.
+  it("sees through an iPad pretending to be a Mac", () => {
+    expect(isPhoneAgent(ipad, 5)).toBe(true);
   });
 });
 
