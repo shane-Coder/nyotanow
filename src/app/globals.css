@@ -7,7 +7,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  /* Two instances of one face: Latin is preloaded, Devanagari is fetched
+     when a Devanagari glyph is drawn. The browser picks per character. */
+  --font-sans: var(--font-poppins), var(--font-poppins-devanagari), system-ui, sans-serif;
   --font-serif: var(--font-playfair), var(--font-tiro), Georgia, serif;
   /* Hindi cards name Tiro first rather than relying on per-glyph fallback,
      which breaks when the card is exported to PNG. */
