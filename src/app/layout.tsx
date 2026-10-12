@@ -7,10 +7,20 @@ import { siteUrl } from "@/lib/invite";
 import "./globals.css";
 
 // Poppins ships Devanagari glyphs, so Hindi and English share one sans face.
+//
+// Three weights, not five. Every weight is two files here — a Latin one of
+// about 8KB and a Devanagari one of about 38KB — and all of them are
+// preloaded, so each weight costs roughly 46KB on the first view of every
+// page whether or not anything on screen uses it. The guest invite page was
+// 739KB with 473KB of that fonts, and it is the page every guest opens on a
+// phone over mobile data.
+//
+// 500 and 600 are hard to tell apart at the 13-14px those UI labels are set
+// in, and 800 was three card titles that read as bold at 700.
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin", "devanagari"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700"],
 });
 
 const playfair = Playfair_Display({

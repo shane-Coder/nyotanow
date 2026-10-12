@@ -233,7 +233,7 @@ function Confetti({ r }: { r: Resolved }) {
         <p className={`mt-[4cqw] max-w-full self-center truncate rounded-full bg-[var(--accent)] px-[3.5cqw] py-[1cqw] text-[3.1cqw] font-semibold ${r.dark ? "text-[var(--bg)]" : "text-white"}`}>
           {r.kicker}
         </p>
-        <h2 className="mt-[3cqw] text-[8.8cqw] leading-[1.08] font-extrabold tracking-tight text-balance">{r.title}</h2>
+        <h2 className="mt-[3cqw] text-[8.8cqw] leading-[1.08] font-bold tracking-tight text-balance">{r.title}</h2>
 
         <div className="mt-[4.5cqw] flex flex-wrap justify-center gap-[2cqw] text-[3.4cqw] font-semibold">
           <span className="rounded-[2cqw] bg-white/75 px-[3cqw] py-[1.4cqw] text-[#1f1f1f]">📅 {r.date}</span>
@@ -472,7 +472,7 @@ function Poster({ r }: { r: Resolved }) {
               so the occasion's emoji stands in. */}
           {r.day ? (
             <div className="mt-[1cqw] flex items-end gap-[3cqw]">
-              <span className="text-[19cqw] leading-[0.82] font-extrabold tabular-nums">{r.day}</span>
+              <span className="text-[19cqw] leading-[0.82] font-bold tabular-nums">{r.day}</span>
               <span className="pb-[2.5cqw] text-[5cqw] leading-none font-bold uppercase">{r.month}</span>
             </div>
           ) : (
@@ -482,7 +482,7 @@ function Poster({ r }: { r: Resolved }) {
 
         <div className="text-left">
           <h2
-            className={`text-[9.6cqw] leading-[1.02] font-extrabold text-balance ${r.hi ? "" : "tracking-tight"}`}
+            className={`text-[9.6cqw] leading-[1.02] font-bold text-balance ${r.hi ? "" : "tracking-tight"}`}
           >
             {r.title}
           </h2>

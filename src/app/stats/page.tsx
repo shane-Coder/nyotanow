@@ -212,7 +212,7 @@ function InviteTable({ list }: { list: InviteList }) {
                       <a
                         href={`/i/${i.slug}`}
                         title={`Event: ${formatEventDate(i.eventDate, "en")}`}
-                        className={`font-medium hover:underline ${ended ? "text-stone-400 line-through decoration-stone-300" : ""}`}
+                        className={`font-semibold hover:underline ${ended ? "text-stone-400 line-through decoration-stone-300" : ""}`}
                       >
                         {i.title}
                       </a>
@@ -358,7 +358,7 @@ function Errors({ feed }: { feed: SentryFeed }) {
                   href={i.permalink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate font-medium hover:underline"
+                  className="block truncate font-semibold hover:underline"
                 >
                   {i.title}
                 </a>
@@ -379,7 +379,7 @@ function Stat({ label, value, hint, highlight }: { label: string; value: number;
   return (
     <div className={`rounded-2xl p-4 ring-1 ${highlight ? "bg-orange-50 ring-orange-200" : "bg-white ring-stone-200"}`}>
       <div className="text-3xl font-bold tabular-nums text-stone-900">{value}</div>
-      <div className="text-sm font-medium text-stone-600">{label}</div>
+      <div className="text-sm font-semibold text-stone-600">{label}</div>
       {hint && <div className="mt-1 text-xs text-stone-500">{hint}</div>}
     </div>
   );
@@ -389,7 +389,7 @@ function Step({ n, label, hint, highlight }: { n: number; label: string; hint: s
   return (
     <div className={`rounded-2xl p-4 ring-1 ${highlight ? "bg-orange-50 ring-orange-200" : "bg-stone-50 ring-stone-200"}`}>
       <div className="text-3xl font-bold tabular-nums text-stone-900">{n}</div>
-      <div className="text-sm font-medium text-stone-700">{label}</div>
+      <div className="text-sm font-semibold text-stone-700">{label}</div>
       <div className="mt-1 text-xs text-stone-500">{hint}</div>
     </div>
   );

@@ -227,7 +227,7 @@ export default function Home() {
               >
                 <span className="text-4xl sm:text-5xl">{o.emoji}</span>
                 <h3 className="mt-3 text-lg font-bold text-stone-900">{o.name.en}</h3>
-                <p className="text-sm font-medium text-brand">{o.name.hi}</p>
+                <p className="text-sm font-semibold text-brand">{o.name.hi}</p>
                 <p className="mt-2 hidden text-sm text-stone-500 sm:block">{o.blurb}</p>
                 <span className="mt-3 inline-block text-sm font-semibold text-stone-900 group-hover:text-brand">
                   Create →
