@@ -1,5 +1,50 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MIN_QUERY, placesEnabled, searchPlaces, toSuggestions } from "./places";
+import { MIN_QUERY, addressAfterPick, placesEnabled, searchPlaces, toSuggestions } from "./places";
+
+describe("the address after a suggestion is chosen", () => {
+  const banda = "Aliganj, Banda, Uttar Pradesh, 210001, India";
+  const dehradun = "Chukkuwala, Dehradun, Uttarakhand, 248001, India";
+
+  it("fills an empty field", () => {
+    expect(addressAfterPick("", false, banda)).toEqual({ address: banda, fromSuggestion: true });
+  });
+
+  // The bug this guards: picking a temple in Banda and then one in Dehradun
+  // left the Banda address under the Dehradun venue, and the guest reads the
+  // card rather than the Directions button.
+  it("lets a second suggestion replace the first", () => {
+    expect(addressAfterPick(banda, true, dehradun)).toEqual({ address: dehradun, fromSuggestion: true });
+  });
+
+  it("leaves an address the host wrote alone", () => {
+    expect(addressAfterPick("Behind the old post office", false, banda)).toEqual({
+      address: "Behind the old post office",
+      fromSuggestion: false,
+    });
+  });
+
+  it("still leaves it alone on the pick after that", () => {
+    const first = addressAfterPick("Behind the old post office", false, banda);
+    expect(addressAfterPick(first.address, first.fromSuggestion, dehradun)).toEqual(first);
+  });
+
+  // Typing past a chosen venue sends an empty address through here, which is
+  // how the stale one gets cleared along with the map pin.
+  it("clears one of ours when the venue is typed past", () => {
+    expect(addressAfterPick(banda, true, "")).toEqual({ address: "", fromSuggestion: false });
+  });
+
+  it("but keeps theirs when the venue is typed past", () => {
+    expect(addressAfterPick("Behind the old post office", false, "")).toEqual({
+      address: "Behind the old post office",
+      fromSuggestion: false,
+    });
+  });
+
+  it("does not claim a suggestion that had no address of its own", () => {
+    expect(addressAfterPick("", false, "")).toEqual({ address: "", fromSuggestion: false });
+  });
+});
 
 describe("venue suggestions", () => {
   const env = { ...process.env };

@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useDeferredValue, useState, type ReactNode } from "react";
+import { useActionState, useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useIstNow, useStoredValue } from "@/lib/client-store";
 import { REFERRER_KEY } from "./RememberReferrer";
 import type { FormState } from "@/app/actions";
 import { clampToFuture, isPastEventAt, maxEventDate, type InviteData } from "@/lib/invite";
 import { OCCASIONS, getOccasion, hidesColourPicker } from "@/lib/occasions";
+import { addressAfterPick } from "@/lib/places";
 import { TEMPLATES, palettesFor, templatesFor, type Lang } from "@/lib/themes";
 import { InviteCard } from "./InviteCard";
 import { NavratriNights } from "./NavratriNights";
@@ -19,6 +20,10 @@ type Props = {
 
 export function CreateForm({ initial, action, mode }: Props) {
   const [data, setData] = useState<InviteData>(initial);
+  // Whether the address now in the form is one we filled in from a suggestion
+  // rather than one the host wrote. Starts false, so on an edit whatever was
+  // saved counts as theirs and no suggestion quietly replaces it.
+  const addressFromPick = useRef(false);
   const [state, formAction, pending] = useActionState(action, undefined);
   const occasion = getOccasion(data.occasion) ?? OCCASIONS[0];
   // Set when this host arrived from another invite's footer.
@@ -253,17 +258,19 @@ export function CreateForm({ initial, action, mode }: Props) {
               <VenueField
                 value={data.venue}
                 onChange={(venue) => set("venue", venue)}
-                onPick={(place) =>
+                onPick={(place) => {
+                  // Worked out before the updater rather than inside it, so
+                  // the ref is written once however often React replays it.
+                  const next = addressAfterPick(data.address, addressFromPick.current, place.address);
+                  addressFromPick.current = next.fromSuggestion;
                   setData((d) => ({
                     ...d,
                     venue: place.name,
-                    // An existing address the host wrote themselves outranks a
-                    // suggestion's: they know their own landmark better.
-                    address: d.address || place.address,
+                    address: next.address,
                     placeLat: place.lat,
                     placeLng: place.lng,
-                  }))
-                }
+                  }));
+                }}
                 placeholder={data.lang === "hi" ? "जैसे: होटल राजमहल" : "e.g. Hotel Rajmahal"}
                 className={input}
               />
@@ -276,7 +283,12 @@ export function CreateForm({ initial, action, mode }: Props) {
                 name="address"
                 autoComplete="off"
                 value={data.address}
-                onChange={(e) => set("address", e.target.value)}
+                onChange={(e) => {
+                  // Typed here, so it is theirs now and no later pick may
+                  // overwrite it.
+                  addressFromPick.current = false;
+                  set("address", e.target.value);
+                }}
                 placeholder="Sector 18, Noida"
                 maxLength={240}
                 className={input}
