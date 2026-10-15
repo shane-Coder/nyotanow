@@ -226,34 +226,6 @@ export function mapsUrl(venue: string, address: string, lat?: number | null, lng
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-function gcalStamp(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
-export function googleCalendarUrl(invite: InviteData, inviteUrl: string): string {
-  let dates: string;
-  if (invite.time) {
-    const start = eventStart(invite.date, invite.time);
-    const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
-    dates = `${gcalStamp(start)}/${gcalStamp(end)}`;
-  } else {
-    const day = invite.date.replace(/-/g, "");
-    const next = new Date(eventStart(invite.date, "12:00").getTime() + 24 * 60 * 60 * 1000);
-    dates = `${day}/${next.toISOString().slice(0, 10).replace(/-/g, "")}`;
-  }
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: invite.title,
-    dates,
-    // A URL in the location field shows up verbatim in the guest's calendar
-    // entry, which is the same ugliness as on the card.
-    location: [withoutMapLink(invite.venue), withoutMapLink(invite.address)].filter(Boolean).join(", "),
-    details: `${invite.message}\n\n${inviteUrl}`.trim(),
-    ctz: EVENT_TZ,
-  });
-  return `https://calendar.google.com/calendar/render?${params}`;
-}
-
 export function slugBase(title: string, fallback: string): string {
   const base = title
     .toLowerCase()
