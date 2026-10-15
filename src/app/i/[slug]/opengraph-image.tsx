@@ -5,6 +5,7 @@ import { findInvite, toInviteData } from "@/db/queries";
 import { formatEventDate, formatEventTime } from "@/lib/invite";
 import { withoutMapLink } from "@/lib/map-link";
 import { getOccasion } from "@/lib/occasions";
+import { svgSafeText } from "@/lib/og-text";
 import { getPalette } from "@/lib/themes";
 
 // This is the preview WhatsApp shows when the link is pasted into a chat,
@@ -38,9 +39,15 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const invite = toInviteData(row);
   const p = getPalette(invite.palette);
   const occasion = getOccasion(invite.occasion);
-  const title = isLatin(invite.title) ? invite.title : `${occasion?.name.en ?? "Event"} Invitation`;
+  // Two filters, and they catch different things. isLatin is about what
+  // Satori can draw; svgSafeText is about what a stranger may put in front
+  // of it. A title that is nothing but markup survives the first and comes
+  // out of the second empty, which is why the fallback is applied after both
+  // rather than only when the script is wrong.
+  const chosen = isLatin(invite.title) ? svgSafeText(invite.title) : "";
+  const title = chosen || `${occasion?.name.en ?? "Event"} Invitation`;
   const stripped = withoutMapLink(invite.venue);
-  const venue = isLatin(stripped) ? stripped : "";
+  const venue = isLatin(stripped) ? svgSafeText(stripped) : "";
   const when = [formatEventDate(invite.date, "en"), formatEventTime(invite.date, invite.time, "en")]
     .filter(Boolean)
     .join(" · ");
