@@ -12,7 +12,6 @@ import {
   eventStart,
   formatEventDate,
   formatEventTime,
-  googleCalendarUrl,
   inviteSchema,
   isPhoneAgent,
   mapsUrl,
@@ -246,24 +245,6 @@ describe("mapsUrl", () => {
 
   it("omits the separator when there is no address", () => {
     expect(new URL(mapsUrl("Funcity", "")).searchParams.get("query")).toBe("Funcity");
-  });
-});
-
-describe("googleCalendarUrl", () => {
-  it("books a three-hour slot in IST for an event with a time", () => {
-    const url = new URL(googleCalendarUrl(base, "https://nyotanow.vercel.app/i/x"));
-    expect(url.searchParams.get("ctz")).toBe("Asia/Kolkata");
-    expect(url.searchParams.get("dates")).toBe("20261025T113000Z/20261025T143000Z");
-  });
-
-  it("books a whole day when the host didn't pick a time", () => {
-    const url = new URL(googleCalendarUrl({ ...base, time: "" }, "https://x/i/y"));
-    expect(url.searchParams.get("dates")).toBe("20261025/20261026");
-  });
-
-  it("carries the invite link in the details so guests can get back to it", () => {
-    const url = new URL(googleCalendarUrl(base, "https://nyotanow.vercel.app/i/abc"));
-    expect(url.searchParams.get("details")).toContain("https://nyotanow.vercel.app/i/abc");
   });
 });
 

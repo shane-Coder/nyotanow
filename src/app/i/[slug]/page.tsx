@@ -10,7 +10,7 @@ import { RsvpForm } from "@/components/RsvpForm";
 import { NativeShareButton, SaveImageButton } from "@/components/ShareActions";
 import { comingCount, findInvite, recordView, toInviteData } from "@/db/queries";
 import { GUEST_UI } from "@/lib/i18n";
-import { formatEventDate, formatEventTime, googleCalendarUrl, mapsUrl, shareMessage, siteUrl, todayInIST } from "@/lib/invite";
+import { formatEventDate, formatEventTime, mapsUrl, shareMessage, siteUrl, todayInIST } from "@/lib/invite";
 import { withoutMapLink } from "@/lib/map-link";
 import { viewerIsOwner } from "@/lib/owner";
 import { getPalette } from "@/lib/themes";
@@ -91,7 +91,7 @@ export default async function InvitePage({ params }: PageProps<"/i/[slug]">) {
             📍 {t.directions}
           </a>
           {!ended && (
-            <a href={googleCalendarUrl(invite, url)} target="_blank" rel="noopener noreferrer" className={btn}>
+            <a href={`/i/${slug}/event.ics`} className={btn}>
               📅 {t.calendar}
             </a>
           )}
